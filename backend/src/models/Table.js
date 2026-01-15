@@ -1,39 +1,47 @@
-import mongoose from 'mongoose';
+import { DataTypes } from 'sequelize';
+import sequelize from '../config/db.js';
 
-const tableSchema = new mongoose.Schema({
+const Table = sequelize.define('Table', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
   name: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   maxPlayers: {
-    type: Number,
-    default: 6
+    type: DataTypes.INTEGER,
+    defaultValue: 6
   },
   smallBlind: {
-    type: Number,
-    required: true
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   bigBlind: {
-    type: Number,
-    required: true
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
-  players: [{
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    position: Number,
-    chips: Number,
-    isActive: Boolean
-  }],
-  currentGame: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Game'
+  isPrivate: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  tableColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#1a4d2e'
   },
   status: {
-    type: String,
-    enum: ['waiting', 'playing', 'finished'],
-    default: 'waiting'
+    type: DataTypes.ENUM('waiting', 'playing', 'finished'),
+    defaultValue: 'waiting'
+  },
+  currentPlayers: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  tableName: 'tables'
 });
 
-export default mongoose.model('Table', tableSchema);
+export default Table;

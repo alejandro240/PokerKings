@@ -1,47 +1,47 @@
-import mongoose from 'mongoose';
+import { DataTypes } from 'sequelize';
+import sequelize from '../config/db.js';
 
-const gameSchema = new mongoose.Schema({
-  table: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Table',
-    required: true
+const Game = sequelize.define('Game', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
-  players: [{
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    cards: [String],
-    bet: Number,
-    folded: Boolean,
-    position: Number
-  }],
-  communityCards: [String],
+  tableId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: { model: 'tables', key: 'id' }
+  },
+  winnerId: {
+    type: DataTypes.UUID,
+    references: { model: 'users', key: 'id' }
+  },
   pot: {
-    type: Number,
-    default: 0
-  },
-  currentBet: {
-    type: Number,
-    default: 0
-  },
-  currentPlayerIndex: {
-    type: Number,
-    default: 0
+    type: DataTypes.BIGINT,
+    defaultValue: 0
   },
   phase: {
-    type: String,
-    enum: ['preflop', 'flop', 'turn', 'river', 'showdown'],
-    default: 'preflop'
+    type: DataTypes.ENUM('preflop', 'flop', 'turn', 'river', 'showdown'),
+    defaultValue: 'preflop'
   },
-  winner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+  communityCards: {
+    type: DataTypes.JSON,
+    defaultValue: []
   },
   status: {
-    type: String,
-    enum: ['active', 'finished'],
-    default: 'active'
+    type: DataTypes.ENUM('active', 'finished'),
+    defaultValue: 'active'
+  },
+  startTime: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  endTime: {
+    type: DataTypes.DATE
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  tableName: 'games'
 });
 
-export default mongoose.model('Game', gameSchema);
+export default Game;

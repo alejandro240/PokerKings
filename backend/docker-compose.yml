@@ -1,16 +1,18 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo:latest
-    container_name: pokerkings-mongodb
+  postgres:
+    image: postgres:15-alpine
+    container_name: pokerkings-postgres
     restart: always
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongo-data:/data/db
+      - postgres-data:/var/lib/postgresql/data
     environment:
-      MONGO_INITDB_DATABASE: pokerkings
+      POSTGRES_DB: pokerkings
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
 
   backend:
     build: .
@@ -20,13 +22,17 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - MONGO_URI=mongodb://mongodb:27017/pokerkings
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=pokerkings
+      - DB_USER=postgres
+      - DB_PASSWORD=password
       - JWT_SECRET=your-super-secret-jwt-key-change-this
       - PORT=3000
     depends_on:
-      - mongodb
+      - postgres
     volumes:
       - ./src:/app/src
 
 volumes:
-  mongo-data:
+  postgres-data:

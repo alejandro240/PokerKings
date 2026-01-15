@@ -1,8 +1,10 @@
-import User from '../models/User.js';
+import { User } from '../models/index.js';
 
 export const getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findByPk(req.params.id, {
+      attributes: { exclude: ['password'] }
+    });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -15,11 +17,10 @@ export const getUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { avatar } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { avatar },
-      { new: true }
-    ).select('-password');
+    const user = await User.findByPk(req.params.id);
+    
+    if (avatar) user.avatar = avatar;
+    await user.save();
     
     res.json(user);
   } catch (error) {
@@ -29,7 +30,9 @@ export const updateUser = async (req, res) => {
 
 export const getUserStats = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('stats level experience');
+    const user = await User.findByPk(req.params.id, {
+      attributes: ['id', 'level', 'experience', 'gamesPlayed', 'gamesWon', 'totalWinnings', 'highestWinning']
+    });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }

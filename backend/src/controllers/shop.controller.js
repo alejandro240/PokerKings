@@ -1,5 +1,4 @@
-import User from '../models/User.js';
-import Transaction from '../models/Transaction.js';
+import { User, Transaction } from '../models/index.js';
 
 const shopItems = [
   { id: 1, name: 'Chips Pack Small', chips: 1000, price: 5 },
@@ -25,15 +24,19 @@ export const purchaseItem = async (req, res) => {
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    const user = await User.findById(req.userId);
+    const user = await User.findByPk(req.userId);
+    const balanceBefore = user.chips;
+    
     user.chips += item.chips;
     await user.save();
 
     await Transaction.create({
-      user: user._id,
+      userId: user.id,
       type: 'purchase',
       amount: item.chips,
-      description: item.name
+      description: item.name,
+      balanceBefore,
+      balanceAfter: user.chips
     });
 
     res.json({ message: 'Purchase successful', user });

@@ -1,9 +1,11 @@
-import Table from '../models/Table.js';
+import { Table } from '../models/index.js';
 
 export const setupLobbySocket = (io, socket) => {
   socket.on('lobby:join', async () => {
     socket.join('lobby');
-    const tables = await Table.find().populate('players.user', 'username avatar');
+    const tables = await Table.findAll({
+      where: { status: ['waiting', 'playing'] }
+    });
     socket.emit('lobby:tables', tables);
   });
 
@@ -12,7 +14,9 @@ export const setupLobbySocket = (io, socket) => {
   });
 
   socket.on('lobby:refresh', async () => {
-    const tables = await Table.find().populate('players.user', 'username avatar');
+    const tables = await Table.findAll({
+      where: { status: ['waiting', 'playing'] }
+    });
     socket.emit('lobby:tables', tables);
   });
 };

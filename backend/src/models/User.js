@@ -1,45 +1,68 @@
-import mongoose from 'mongoose';
+import { DataTypes } from 'sequelize';
+import sequelize from '../config/db.js';
 
-const userSchema = new mongoose.Schema({
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
   username: {
-    type: String,
-    required: true,
+    type: DataTypes.STRING,
+    allowNull: false,
     unique: true,
     trim: true
   },
   email: {
-    type: String,
-    required: true,
+    type: DataTypes.STRING,
+    allowNull: false,
     unique: true,
-    lowercase: true
+    lowercase: true,
+    validate: { isEmail: true }
   },
   password: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   chips: {
-    type: Number,
-    default: 1000
+    type: DataTypes.BIGINT,
+    defaultValue: 1000
   },
   level: {
-    type: Number,
-    default: 1
+    type: DataTypes.INTEGER,
+    defaultValue: 1
   },
   experience: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   },
   avatar: {
-    type: String,
-    default: 'default-avatar.png'
+    type: DataTypes.STRING,
+    defaultValue: 'default-avatar.png'
   },
-  stats: {
-    gamesPlayed: { type: Number, default: 0 },
-    gamesWon: { type: Number, default: 0 },
-    totalWinnings: { type: Number, default: 0 }
+  highestWinning: {
+    type: DataTypes.BIGINT,
+    defaultValue: 0
+  },
+  totalWinnings: {
+    type: DataTypes.BIGINT,
+    defaultValue: 0
+  },
+  gamesPlayed: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  gamesWon: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  lastFreeChipsDate: {
+    type: DataTypes.DATE,
+    defaultValue: null
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  tableName: 'users'
 });
 
-export default mongoose.model('User', userSchema);
+export default User;

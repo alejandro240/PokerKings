@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: pokerkings-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: pokerkings
+
+  backend:
+    build: .
+    container_name: pokerkings-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/pokerkings
+      - JWT_SECRET=your-super-secret-jwt-key-change-this
+      - PORT=3000
+    depends_on:
+      - mongodb
+    volumes:
+      - ./src:/app/src
+
+volumes:
+  mongo-data:

@@ -6,11 +6,15 @@ import InvitacionesOffcanvas from './InvitacionesOffcanvas';
 import './Navbar.css';
 
 function Navbar({ user, onLogout }) {
-  // Estados para controlar qué offcanvas está abierto
-  const [showTrofeos, setShowTrofeos] = useState(false);
-  const [showMisiones, setShowMisiones] = useState(false);
-  const [showAmigos, setShowAmigos] = useState(false);
-  const [showInvitaciones, setShowInvitaciones] = useState(false);
+  // Estado para controlar qué offcanvas está abierto (solo uno a la vez)
+  const [activeOffcanvas, setActiveOffcanvas] = useState(null);
+
+  // Funciones para abrir offcanvas (cierra cualquier otro abierto)
+  const openTrofeos = () => setActiveOffcanvas('trofeos');
+  const openMisiones = () => setActiveOffcanvas('misiones');
+  const openAmigos = () => setActiveOffcanvas('amigos');
+  const openInvitaciones = () => setActiveOffcanvas('invitaciones');
+  const closeOffcanvas = () => setActiveOffcanvas(null);
 
   // Función para ir a inicio
   const handleInicio = () => {
@@ -55,7 +59,7 @@ function Navbar({ user, onLogout }) {
               <li className="nav-item">
                 <button 
                   className="nav-link btn btn-link" 
-                  onClick={() => setShowTrofeos(true)}
+                  onClick={openTrofeos}
                 >
                   🏆 Trofeos
                 </button>
@@ -65,7 +69,7 @@ function Navbar({ user, onLogout }) {
               <li className="nav-item">
                 <button 
                   className="nav-link btn btn-link" 
-                  onClick={() => setShowMisiones(true)}
+                  onClick={openMisiones}
                 >
                   ✅ Misiones Diarias
                 </button>
@@ -75,7 +79,7 @@ function Navbar({ user, onLogout }) {
               <li className="nav-item">
                 <button 
                   className="nav-link btn btn-link" 
-                  onClick={() => setShowAmigos(true)}
+                  onClick={openAmigos}
                 >
                   👥 Amigos
                 </button>
@@ -85,7 +89,7 @@ function Navbar({ user, onLogout }) {
               <li className="nav-item">
                 <button 
                   className="nav-link btn btn-link" 
-                  onClick={() => setShowInvitaciones(true)}
+                  onClick={openInvitaciones}
                 >
                   📨 Invitaciones
                 </button>
@@ -107,26 +111,26 @@ function Navbar({ user, onLogout }) {
 
       {/* Offcanvas para Trofeos */}
       <TrofeosOffcanvas 
-        show={showTrofeos} 
-        onHide={() => setShowTrofeos(false)} 
+        show={activeOffcanvas === 'trofeos'} 
+        onHide={closeOffcanvas} 
       />
 
       {/* Offcanvas para Misiones */}
       <MisionesOffcanvas 
-        show={showMisiones} 
-        onHide={() => setShowMisiones(false)} 
+        show={activeOffcanvas === 'misiones'} 
+        onHide={closeOffcanvas} 
       />
 
       {/* Offcanvas para Amigos */}
       <AmigosOffcanvas 
-        show={showAmigos} 
-        onHide={() => setShowAmigos(false)} 
+        show={activeOffcanvas === 'amigos'} 
+        onHide={closeOffcanvas} 
       />
 
       {/* Offcanvas para Invitaciones */}
       <InvitacionesOffcanvas 
-        show={showInvitaciones} 
-        onHide={() => setShowInvitaciones(false)} 
+        show={activeOffcanvas === 'invitaciones'} 
+        onHide={closeOffcanvas} 
       />
     </>
   );

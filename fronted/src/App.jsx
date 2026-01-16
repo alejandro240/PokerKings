@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react'
 import Navbar from './components/layout/Navbar'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
+import HomePage from './pages/HomePage'
+import LobbyPage from './pages/LobbyPage'
+import CreateTablePage from './pages/CreateTablePage'
+import TablePage from './pages/TablePage'
 import './App.css'
 import { authService } from './services/auth'
 import { tableAPI } from './services/api'
@@ -12,6 +16,8 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showRegister, setShowRegister] = useState(false)
+  const [currentView, setCurrentView] = useState('home') // home, lobby, create, table
+  const [currentTable, setCurrentTable] = useState(null) // Datos de la mesa actual
 
   // Cargar datos al iniciar
   useEffect(() => {
@@ -65,6 +71,66 @@ function App() {
     authService.logout()
     setUser(null)
     setTables([])
+    setCurrentView('home')
+  }
+
+  // Navegación entre vistas
+  const handleNavigate = (view) => {
+    setCurrentView(view)
+  }
+
+  // Unirse a mesa
+  const handleJoinTable = async (table) => {
+    try {
+      console.log('Unirse a mesa:', table)
+      // Establecer la mesa actual
+      setCurrentTable(table)
+      setCurrentView('table')
+      // Aquí después harás la llamada al backend para unirse realmente
+      // const response = await tableAPI.joinTable(table.id)
+    } catch (err) {
+      console.error('Error uniéndose a mesa:', err)
+      setError('No se pudo unir a la mesa')
+    }
+  }
+
+  // Crear mesa
+  const handleCreateTable = async (formData) => {
+    try {
+      console.log('Creando mesa:', formData)
+      
+      // Llamar al backend para crear la mesa
+      const tableData = {
+        name: formData.tableName,
+        smallBlind: formData.smallBlind,
+        bigBlind: formData.bigBlind,
+        maxPlayers: formData.maxPlayers,
+        isPrivate: formData.isPrivate,
+        botsCount: formData.bots
+      }
+      
+      const response = await tableAPI.createTable(tableData)
+      
+      // Establecer la mesa creada como mesa actual
+      setCurrentTable({
+        ...response.data,
+        players: [user], // El creador es el primer jugador
+        botsCount: formData.bots
+      })
+      
+      setCurrentView('table')
+      
+      // Recargar lista de mesas
+      try {
+        const tablesResponse = await tableAPI.getAllTables()
+        setTables(tablesResponse.data || [])
+      } catch (err) {
+        console.error('Error recargando mesas:', err)
+      }
+    } catch (err) {
+      console.error('Error creando mesa:', err)
+      setError('No se pudo crear la mesa')
+    }
   }
 
   // Si no hay usuario, mostrar Login o Register
@@ -91,60 +157,32 @@ function App() {
     <div className="App">
       <Navbar user={user} onLogout={handleLogout} />
       
-      <div className="container mt-4">
-        <div className="jumbotron">
-          <h1 className="display-4">🎰 Bienvenido a Poker Kings</h1>
-          <p className="lead">La mejor plataforma de poker online</p>
-          <hr className="my-4" />
-          
-          <div>
-            <p>👤 Usuario: <strong>{user.username}</strong></p>
-            <p>💰 Fichas: <strong>{user.chips?.toLocaleString() || 0}</strong></p>
-            <p>⭐ Nivel: <strong>{user.level || 1}</strong></p>
-            <p>📊 Experiencia: <strong>{user.experience?.toLocaleString() || 0} XP</strong></p>
-            <p>🎮 Partidas: <strong>{user.gamesPlayed || 0}</strong> | Ganadas: <strong>{user.gamesWon || 0}</strong></p>
-          </div>
-        </div>
+      {/* Renderizar vista actual */}
+      {currentView === 'home' && (
+        <HomePage onNavigate={handleNavigate} />
+      )}
 
-        {/* Mostrar error si existe */}
-        {error && (
-          <div className="alert alert-danger" role="alert">
-            Error: {error}
-          </div>
-        )}
+      {currentView === 'lobby' && (
+        <LobbyPage 
+          onNavigate={handleNavigate}
+          onJoinTable={handleJoinTable}
+        />
+      )}
 
-        {/* Mostrar mesas disponibles */}
-        <div className="mt-5">
-          <h2>📊 Mesas Disponibles</h2>
-          {loading ? (
-            <div className="spinner-border" role="status">
-              <span className="visually-hidden">Cargando...</span>
-            </div>
-          ) : tables.length > 0 ? (
-            <div className="row">
-              {tables.map((table) => (
-                <div key={table.id} className="col-md-4 mb-3">
-                  <div className="card">
-                    <div className="card-body">
-                      <h5 className="card-title">{table.name}</h5>
-                      <p className="card-text">
-                        <strong>Límites:</strong> {table.smallBlind}/{table.bigBlind}<br/>
-                        <strong>Jugadores:</strong> {table.currentPlayers}/{table.maxPlayers}<br/>
-                        <strong>Estado:</strong> <span className="badge bg-info">{table.status}</span>
-                      </p>
-                      <button className="btn btn-primary btn-sm">
-                        Unirse
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No hay mesas disponibles en este momento</p>
-          )}
-        </div>
-      </div>
+      {currentView === 'create' && (
+        <CreateTablePage 
+          onNavigate={handleNavigate}
+          onCreate={handleCreateTable}
+        />
+      )}
+
+      {currentView === 'table' && currentTable && (
+        <TablePage 
+          table={currentTable}
+          user={user}
+          onNavigate={handleNavigate}
+        />
+      )}
     </div>
   )
 }

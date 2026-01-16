@@ -32,6 +32,40 @@ const Game = sequelize.define('Game', {
     type: DataTypes.ENUM('active', 'finished'),
     defaultValue: 'active'
   },
+  dealerId: {
+    type: DataTypes.UUID,
+    references: { model: 'users', key: 'id' },
+    comment: 'Dealer button (BTN)'
+  },
+  smallBlindId: {
+    type: DataTypes.UUID,
+    references: { model: 'users', key: 'id' },
+    comment: 'Small blind player'
+  },
+  bigBlindId: {
+    type: DataTypes.UUID,
+    references: { model: 'users', key: 'id' },
+    comment: 'Big blind player'
+  },
+  currentPlayerIndex: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Index of current player in players array'
+  },
+  players: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of {userId, chips, committed, hand} objects in order'
+  },
+  currentBet: {
+    type: DataTypes.BIGINT,
+    defaultValue: 0,
+    comment: 'Current bet amount to call'
+  },
+  deck: {
+    type: DataTypes.JSON,
+    comment: 'Remaining cards in deck'
+  },
   startTime: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

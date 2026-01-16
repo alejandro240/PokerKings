@@ -32,7 +32,14 @@ export const register = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        chips: user.chips
+        chips: user.chips,
+        level: user.level,
+        experience: user.experience,
+        avatar: user.avatar,
+        gamesPlayed: user.gamesPlayed,
+        gamesWon: user.gamesWon,
+        totalWinnings: user.totalWinnings,
+        highestWinning: user.highestWinning
       }
     });
   } catch (error) {
@@ -62,7 +69,14 @@ export const login = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        chips: user.chips
+        chips: user.chips,
+        level: user.level,
+        experience: user.experience,
+        avatar: user.avatar,
+        gamesPlayed: user.gamesPlayed,
+        gamesWon: user.gamesWon,
+        totalWinnings: user.totalWinnings,
+        highestWinning: user.highestWinning
       }
     });
   } catch (error) {

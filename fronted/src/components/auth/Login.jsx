@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { authService } from '../../services/auth';
+import './Login.css';
 
 function Login({ onLoginSuccess, onSwitchToRegister }) {
   const [email, setEmail] = useState('');
@@ -49,119 +50,123 @@ function Login({ onLoginSuccess, onSwitchToRegister }) {
   };
 
   return (
-    <div className="container mt-5">
-      <div className="row justify-content-center">
-        <div className="col-md-6">
-          <div className="card shadow">
-            <div className="card-body p-5">
-              <h2 className="text-center mb-4">
-                🎰 Iniciar Sesión
-              </h2>
+    <div className="login-container">
+      <div className="login-card">
+        {/* Logo y Título */}
+        <div className="login-header">
+          <img src="/assets/images/logo.png" alt="Poker Kings" className="login-logo" />
+          <h2 className="login-title">🎰 Iniciar Sesión</h2>
+          <p className="login-subtitle">Bienvenido de vuelta al casino</p>
+        </div>
 
-              {/* Mostrar error si existe */}
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  ⚠️ {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit}>
-                {/* Email */}
-                <div className="mb-3">
-                  <label htmlFor="email" className="form-label">
-                    📧 Email
-                  </label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    id="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                {/* Contraseña */}
-                <div className="mb-3">
-                  <label htmlFor="password" className="form-label">
-                    🔒 Contraseña
-                  </label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                {/* Botón de login */}
-                <button
-                  type="submit"
-                  className="btn btn-primary w-100 mb-3"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                      Iniciando sesión...
-                    </>
-                  ) : (
-                    '🎮 Iniciar Sesión'
-                  )}
-                </button>
-              </form>
-
-              {/* Botón para ir a registro */}
-              <div className="text-center">
-                <p className="mb-2">¿No tienes cuenta?</p>
-                <button
-                  className="btn btn-outline-secondary"
-                  onClick={onSwitchToRegister}
-                  disabled={loading}
-                >
-                  Crear Cuenta Nueva
-                </button>
-              </div>
-
-              {/* Login rápido para pruebas */}
-              <hr className="my-4" />
-              <div className="text-center">
-                <p className="text-muted small mb-2">🧪 Pruebas rápidas:</p>
-                <div className="d-flex gap-2 justify-content-center">
-                  <button
-                    className="btn btn-sm btn-outline-info"
-                    onClick={() => handleQuickLogin(1)}
-                    disabled={loading}
-                  >
-                    Jugador 1
-                  </button>
-                  <button
-                    className="btn btn-sm btn-outline-info"
-                    onClick={() => handleQuickLogin(2)}
-                    disabled={loading}
-                  >
-                    Jugador 2
-                  </button>
-                  <button
-                    className="btn btn-sm btn-outline-info"
-                    onClick={() => handleQuickLogin(3)}
-                    disabled={loading}
-                  >
-                    Jugador 3
-                  </button>
-                </div>
-                <p className="text-muted small mt-2">
-                  (jugador1@pokerkings.com / password123)
-                </p>
-              </div>
-            </div>
+        {/* Mostrar error si existe */}
+        {error && (
+          <div className="login-error">
+            <span className="error-icon">⚠️</span>
+            <span>{error}</span>
           </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="login-form">
+          {/* Email */}
+          <div className="form-group">
+            <label htmlFor="email" className="form-label">
+              <span className="label-icon">📧</span>
+              Email
+            </label>
+            <input
+              type="email"
+              className="form-input"
+              id="email"
+              placeholder="alejandro"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </div>
+
+          {/* Contraseña */}
+          <div className="form-group">
+            <label htmlFor="password" className="form-label">
+              <span className="label-icon">🔒</span>
+              Contraseña
+            </label>
+            <input
+              type="password"
+              className="form-input"
+              id="password"
+              placeholder="••••••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </div>
+
+          {/* Botón de login */}
+          <button
+            type="submit"
+            className="btn-login"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner"></span>
+                Iniciando sesión...
+              </>
+            ) : (
+              <>
+                <span>🎮</span>
+                Iniciar Sesión
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Botón para ir a registro */}
+        <div className="login-footer">
+          <p className="footer-text">¿No tienes cuenta?</p>
+          <button
+            className="btn-register"
+            onClick={onSwitchToRegister}
+            disabled={loading}
+          >
+            Crear Cuenta Nueva
+          </button>
+        </div>
+
+        {/* Login rápido para pruebas */}
+        <div className="quick-login">
+          <div className="divider">
+            <span>🧪 Pruebas rápidas:</span>
+          </div>
+          <div className="quick-login-buttons">
+            <button
+              className="btn-quick"
+              onClick={() => handleQuickLogin(1)}
+              disabled={loading}
+            >
+              Jugador 1
+            </button>
+            <button
+              className="btn-quick"
+              onClick={() => handleQuickLogin(2)}
+              disabled={loading}
+            >
+              Jugador 2
+            </button>
+            <button
+              className="btn-quick"
+              onClick={() => handleQuickLogin(3)}
+              disabled={loading}
+            >
+              Jugador 3
+            </button>
+          </div>
+          <p className="quick-login-hint">
+            (jugador1@pokerkings.com / password123)
+          </p>
         </div>
       </div>
     </div>

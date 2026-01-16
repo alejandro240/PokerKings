@@ -3,6 +3,7 @@ import TrofeosOffcanvas from './TrofeosOffcanvas';
 import MisionesOffcanvas from './MisionesOffcanvas';
 import AmigosOffcanvas from './AmigosOffcanvas';
 import InvitacionesOffcanvas from './InvitacionesOffcanvas';
+import './Navbar.css';
 
 function Navbar({ user, onLogout }) {
   // Estados para controlar qué offcanvas está abierto
@@ -25,11 +26,10 @@ function Navbar({ user, onLogout }) {
 
   return (
     <>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+      <nav className="navbar navbar-expand-lg navbar-dark navbar-casino">
         <div className="container-fluid">
           <a className="navbar-brand" href="/">
-            <img src="/logo.png" alt="Poker Kings" height="40" />
-            Poker Kings
+            <img src="/assets/images/logo.png" alt="Poker Kings" height="100" />
           </a>
 
           {/* Botón hamburguesa para móvil */}
@@ -44,15 +44,6 @@ function Navbar({ user, onLogout }) {
 
           <div className="collapse navbar-collapse" id="navbarNav">
             <ul className="navbar-nav ms-auto">
-              {/* Mostrar usuario y chips si está autenticado */}
-              {user && (
-                <li className="nav-item">
-                  <span className="nav-link text-warning">
-                    👤 {user.username} | 💰 {user.chips?.toLocaleString() || 0} chips
-                  </span>
-                </li>
-              )}
-
               {/* 1. Inicio */}
               <li className="nav-item">
                 <button className="nav-link btn btn-link" onClick={handleInicio}>

@@ -19,7 +19,7 @@ function InvitacionesOffcanvas({ show, onHide }) {
 
   return (
     <div 
-      className={`offcanvas offcanvas-start ${show ? 'show' : ''}`} 
+      className={`offcanvas offcanvas-start offcanvas-casino ${show ? 'show' : ''}`} 
       tabIndex="-1"
       style={{ visibility: show ? 'visible' : 'hidden' }}
     >

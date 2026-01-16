@@ -103,9 +103,6 @@ function App() {
             <p>⭐ Nivel: <strong>{user.level || 1}</strong></p>
             <p>📊 Experiencia: <strong>{user.experience?.toLocaleString() || 0} XP</strong></p>
             <p>🎮 Partidas: <strong>{user.gamesPlayed || 0}</strong> | Ganadas: <strong>{user.gamesWon || 0}</strong></p>
-            <button className="btn btn-danger" onClick={handleLogout}>
-              🚪 Cerrar Sesión
-            </button>
           </div>
         </div>
 

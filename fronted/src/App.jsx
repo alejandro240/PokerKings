@@ -99,7 +99,7 @@ function App() {
           
           <div>
             <p>👤 Usuario: <strong>{user.username}</strong></p>
-            <p>💰 Chips: <strong>{user.chips.toLocaleString()}</strong></p>
+            <p>💰 Fichas: <strong>{user.chips.toLocaleString()}</strong></p>
             <p>⭐ Nivel: <strong>{user.level}</strong></p>
             <button className="btn btn-danger" onClick={handleLogout}>
               🚪 Cerrar Sesión

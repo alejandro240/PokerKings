@@ -4,7 +4,7 @@ import MisionesOffcanvas from './MisionesOffcanvas';
 import AmigosOffcanvas from './AmigosOffcanvas';
 import InvitacionesOffcanvas from './InvitacionesOffcanvas';
 
-function Navbar() {
+function Navbar({ user, onLogout }) {
   // Estados para controlar qué offcanvas está abierto
   const [showTrofeos, setShowTrofeos] = useState(false);
   const [showMisiones, setShowMisiones] = useState(false);
@@ -18,10 +18,9 @@ function Navbar() {
 
   // Función para cerrar sesión
   const handleCerrarSesion = () => {
-    // Aquí después pondrás la lógica para cerrar sesión
-    console.log('Cerrando sesión...');
-    // localStorage.removeItem('token');
-    // window.location.href = '/login';
+    if (onLogout) {
+      onLogout();
+    }
   };
 
   return (
@@ -45,6 +44,15 @@ function Navbar() {
 
           <div className="collapse navbar-collapse" id="navbarNav">
             <ul className="navbar-nav ms-auto">
+              {/* Mostrar usuario y chips si está autenticado */}
+              {user && (
+                <li className="nav-item">
+                  <span className="nav-link text-warning">
+                    👤 {user.username} | 💰 {user.chips?.toLocaleString() || 0} chips
+                  </span>
+                </li>
+              )}
+
               {/* 1. Inicio */}
               <li className="nav-item">
                 <button className="nav-link btn btn-link" onClick={handleInicio}>

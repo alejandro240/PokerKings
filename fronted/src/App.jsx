@@ -7,6 +7,7 @@ import LobbyPage from './pages/LobbyPage'
 import CreateTablePage from './pages/CreateTablePage'
 import TablePage from './pages/TablePage'
 import './App.css'
+import './styles/animations.css'
 import { authService } from './services/auth'
 import { tableAPI } from './services/api'
 
@@ -29,16 +30,13 @@ function App() {
         const currentUser = authService.getCurrentUser()
         if (currentUser) {
           setUser(currentUser)
-          
-          // Cargar mesas disponibles
-          const tablesResponse = await tableAPI.getAllTables()
-          setTables(tablesResponse.data || [])
+          // Las mesas se cargarán bajo demanda cuando el usuario vaya al lobby
+          setTables([])
         } else {
           setTables([])
         }
       } catch (err) {
         console.error('Error cargando datos:', err)
-        setError(err.message)
       } finally {
         setLoading(false)
       }
@@ -50,14 +48,8 @@ function App() {
   // Función cuando el login es exitoso
   const handleLoginSuccess = async (loggedUser) => {
     setUser(loggedUser)
-    
-    // Cargar mesas después del login
-    try {
-      const tablesResponse = await tableAPI.getAllTables()
-      setTables(tablesResponse.data || [])
-    } catch (err) {
-      console.error('Error cargando mesas:', err)
-    }
+    // Las mesas se mostrarán desde LobbyPage (datos de ejemplo)
+    setTables([])
   }
 
   // Función cuando el registro es exitoso
@@ -109,23 +101,37 @@ function App() {
         botsCount: formData.bots
       }
       
-      const response = await tableAPI.createTable(tableData)
-      
-      // Establecer la mesa creada como mesa actual
-      setCurrentTable({
-        ...response.data,
-        players: [user], // El creador es el primer jugador
-        botsCount: formData.bots
-      })
-      
-      setCurrentView('table')
-      
-      // Recargar lista de mesas
       try {
-        const tablesResponse = await tableAPI.getAllTables()
-        setTables(tablesResponse.data || [])
-      } catch (err) {
-        console.error('Error recargando mesas:', err)
+        const response = await tableAPI.createTable(tableData)
+        
+        // Establecer la mesa creada como mesa actual
+        setCurrentTable({
+          ...response.data,
+          players: [user], // El creador es el primer jugador
+          botsCount: formData.bots
+        })
+        
+        setCurrentView('table')
+        
+        // Recargar lista de mesas
+        try {
+          const tablesResponse = await tableAPI.getAllTables()
+          setTables(tablesResponse.data || [])
+        } catch (err) {
+          console.warn('No se pudo recargar mesas')
+        }
+      } catch (apiError) {
+        // Si backend no está disponible, crear mesa localmente
+        console.warn('Backend no disponible, creando mesa localmente')
+        const localTable = {
+          id: Date.now(),
+          ...tableData,
+          players: [user],
+          status: 'waiting'
+        }
+        setCurrentTable(localTable)
+        setCurrentView('table')
+        setTables(prev => [...prev, localTable])
       }
     } catch (err) {
       console.error('Error creando mesa:', err)

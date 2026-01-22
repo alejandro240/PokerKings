@@ -1,0 +1,138 @@
+import React, { useState } from 'react';
+import './BettingActions.css';
+
+function BettingActions({ 
+  playerChips = 0, 
+  currentBet = 0, 
+  minRaise = 0,
+  pot = 0,
+  isPlayerTurn = false,
+  canCheck = false,
+  canCall = false,
+  canRaise = false,
+  canFold = false,
+  onFold,
+  onCheck,
+  onCall,
+  onRaise,
+  onAllIn
+}) {
+  const [raiseAmount, setRaiseAmount] = useState(minRaise);
+  const [showRaiseSlider, setShowRaiseSlider] = useState(false);
+
+  const handleRaise = () => {
+    if (raiseAmount >= minRaise && raiseAmount <= playerChips) {
+      onRaise(raiseAmount);
+      setShowRaiseSlider(false);
+      setRaiseAmount(minRaise);
+    }
+  };
+
+  const handleAllIn = () => {
+    onAllIn(playerChips);
+  };
+
+  if (!isPlayerTurn) {
+    return (
+      <div className="betting-actions-container disabled">
+        <div className="waiting-turn">
+          <span className="waiting-icon">⏳</span>
+          <span>Esperando tu turno...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="betting-actions-container">
+      <div className="betting-info">
+        <div className="info-item">
+          <span className="info-label">💰 Bote:</span>
+          <span className="info-value">{pot.toLocaleString()} PK</span>
+        </div>
+        <div className="info-item">
+          <span className="info-label">💵 Apuesta actual:</span>
+          <span className="info-value">{currentBet.toLocaleString()} PK</span>
+        </div>
+        <div className="info-item">
+          <span className="info-label">🪙 Tus fichas:</span>
+          <span className="info-value">{playerChips.toLocaleString()} PK</span>
+        </div>
+      </div>
+
+      {showRaiseSlider ? (
+        <div className="raise-slider-container">
+          <div className="slider-header">
+            <span>💸 Cantidad a subir</span>
+            <button className="btn-close-slider" onClick={() => setShowRaiseSlider(false)}>✕</button>
+          </div>
+          <div className="slider-amount">
+            <span className="amount-label">Monto:</span>
+            <span className="amount-value">{raiseAmount.toLocaleString()} PK</span>
+          </div>
+          <input
+            type="range"
+            min={minRaise}
+            max={playerChips}
+            value={raiseAmount}
+            onChange={(e) => setRaiseAmount(parseInt(e.target.value))}
+            className="raise-slider"
+          />
+          <div className="slider-limits">
+            <span>Min: {minRaise.toLocaleString()}</span>
+            <span>Max: {playerChips.toLocaleString()}</span>
+          </div>
+          <div className="slider-actions">
+            <button className="btn-action btn-cancel" onClick={() => setShowRaiseSlider(false)}>
+              Cancelar
+            </button>
+            {playerChips > 0 && (
+              <button className="btn-action btn-allin" onClick={handleAllIn}>
+                🔥 All-In
+              </button>
+            )}
+            <button className="btn-action btn-confirm" onClick={handleRaise}>
+              ✅ Confirmar Subida
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="action-buttons">
+          {/* Botón 1: No ir (Fold) */}
+          {canFold && (
+            <button className="btn-action btn-fold" onClick={onFold}>
+              🚫 No ir
+            </button>
+          )}
+          
+          {/* Botón 2: Pasar / Igualar (Contextual) */}
+          {canCheck ? (
+            <button className="btn-action btn-check" onClick={onCheck}>
+              ✅ Pasar
+            </button>
+          ) : canCall ? (
+            <button className="btn-action btn-call" onClick={onCall}>
+              💵 Igualar {currentBet.toLocaleString()} PK
+            </button>
+          ) : null}
+          
+          {/* Botón 3: Subir (Raise) */}
+          {canRaise && (
+            <button className="btn-action btn-raise" onClick={() => setShowRaiseSlider(true)}>
+              💸 Subir
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="turn-timer">
+        <div className="timer-label">⏱️ Tiempo restante</div>
+        <div className="timer-bar">
+          <div className="timer-fill" style={{ width: '75%' }}></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default BettingActions;

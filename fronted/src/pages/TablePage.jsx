@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import PokerTable from '../components/table/PokerTable';
+import BettingActions from '../components/table/BettingActions';
+import CommunityCards from '../components/table/CommunityCards';
+import usePokerGame from '../hooks/usePokerGame';
 import './TablePage.css';
 
 function TablePage({ table, user, onNavigate }) {
@@ -8,6 +11,9 @@ function TablePage({ table, user, onNavigate }) {
   const [isSpectator, setIsSpectator] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState([]);
+
+  // Usar el hook de juego de póker
+  const pokerGame = usePokerGame();
 
   useEffect(() => {
     if (table) {
@@ -19,7 +25,8 @@ function TablePage({ table, user, onNavigate }) {
         initialPlayers.push({
           username: user.username,
           chips: user.chips || 5000,
-          avatar: user.avatar || '😎'
+          avatar: user.avatar && user.avatar !== 'default-avatar.png' ? user.avatar : '🎮',
+          level: user.level || 1
         });
       }
       
@@ -29,7 +36,8 @@ function TablePage({ table, user, onNavigate }) {
           initialPlayers.push({
             username: `Bot ${i + 1}`,
             chips: 5000,
-            avatar: '🤖'
+            avatar: '🤖',
+            level: Math.floor(Math.random() * 20) + 1 // Nivel aleatorio entre 1-20
           });
         }
       }
@@ -40,6 +48,24 @@ function TablePage({ table, user, onNavigate }) {
       }
       
       setPlayers(initialPlayers);
+
+      // Inicializar el juego cuando hay suficientes jugadores
+      const activePlayers = initialPlayers.filter(p => p !== null);
+      if (activePlayers.length >= 2) {
+        // Determinar el índice del jugador actual
+        const playerIndex = activePlayers.findIndex(p => p.username === user?.username);
+        
+        // Iniciar juego (después el backend enviará esto)
+        setTimeout(() => {
+          pokerGame.startNewGame(
+            activePlayers, 
+            playerIndex >= 0 ? playerIndex : 0,
+            table.smallBlind || 50,
+            table.bigBlind || 100
+          );
+          pokerGame.updatePlayerChips(user?.chips || 5000);
+        }, 1000);
+      }
     }
   }, [table, user, isSpectator]);
 
@@ -111,7 +137,7 @@ function TablePage({ table, user, onNavigate }) {
     <div className="table-page">
       {/* Header con información de la mesa */}
       <div className="table-header">
-        <button className="btn-back" onClick={() => onNavigate('home')}>
+        <button className="btn-back" onClick={() => onNavigate('lobby')}>
           ← Salir de la mesa
         </button>
         
@@ -179,12 +205,39 @@ function TablePage({ table, user, onNavigate }) {
         </div>
       </div>
 
-      {/* Mesa de poker */}
+      {/* Mesa de poker con cartas comunitarias */}
       <PokerTable 
         maxPlayers={table.maxPlayers}
         players={players}
         tableColor={table.tableColor}
+        dealerPosition={pokerGame.dealerPosition}
+        smallBlindPosition={pokerGame.smallBlindPosition}
+        bigBlindPosition={pokerGame.bigBlindPosition}
+        communityCards={pokerGame.communityCards}
+        gamePhase={pokerGame.gamePhase}
+        pot={pokerGame.pot}
+        sidePots={pokerGame.sidePots}
       />
+
+      {/* Acciones de apuestas */}
+      {!isSpectator && pokerGame.gamePhase !== 'waiting' && (
+        <BettingActions 
+          playerChips={pokerGame.playerChips}
+          currentBet={pokerGame.currentBet}
+          minRaise={pokerGame.minRaise}
+          pot={pokerGame.pot}
+          isPlayerTurn={pokerGame.currentPlayerTurn === 0} // Asumiendo que el jugador es índice 0
+          canCheck={pokerGame.canCheck}
+          canCall={pokerGame.canCall}
+          canRaise={pokerGame.canRaise}
+          canFold={pokerGame.canFold}
+          onFold={pokerGame.handleFold}
+          onCheck={pokerGame.handleCheck}
+          onCall={pokerGame.handleCall}
+          onRaise={pokerGame.handleRaise}
+          onAllIn={pokerGame.handleAllIn}
+        />
+      )}
 
       {/* Panel de acciones */}
       <div className="actions-panel">
@@ -194,7 +247,6 @@ function TablePage({ table, user, onNavigate }) {
             🪡 Volver a la Mesa
           </button>
         )}
-        <button className="btn-action">⚙️ Configuración</button>
       </div>
 
       {/* Modal de invitación a amigos */}

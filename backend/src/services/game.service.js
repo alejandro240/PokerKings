@@ -1,4 +1,10 @@
 import { Game, Table, User, Hand } from '../models/index.js';
+import {
+  advancePhase,
+  checkAllPlayersActed,
+  getFirstToActInPhase
+} from './game.phases.js';
+import { compareHands, getBestHand } from './hand.ranking.js';
 
 // Palos de cartas
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -47,15 +53,26 @@ export const calculatePositions = (playersArray, dealerIndex) => {
     throw new Error('Se requieren al menos 2 jugadores');
   }
 
-  const smallBlindIndex = (dealerIndex + 1) % count;
-  const bigBlindIndex = (dealerIndex + 2) % count;
+  // En heads-up: dealer = SB, otro = BB
+  // En 6-max+: dealer (BTN), siguiente (SB), siguiente (BB)
+  let smallBlindIndex, bigBlindIndex;
+  
+  if (count === 2) {
+    // Heads-up: dealer es SB, otro es BB
+    smallBlindIndex = dealerIndex;
+    bigBlindIndex = (dealerIndex + 1) % count;
+  } else {
+    // 6-max+: estándar
+    smallBlindIndex = (dealerIndex + 1) % count;
+    bigBlindIndex = (dealerIndex + 2) % count;
+  }
 
   return {
     dealerIndex,
     smallBlindIndex,
     bigBlindIndex,
     positions: playersArray.map((player, idx) => {
-      if (idx === dealerIndex) return 'BTN';
+      if (idx === dealerIndex && count > 2) return 'BTN';
       if (idx === smallBlindIndex) return 'SB';
       if (idx === bigBlindIndex) return 'BB';
       if (count === 2) return null;
@@ -122,8 +139,10 @@ export const initializeGame = async (tableId, playersData) => {
       pot: smallBlindAmount + bigBlindAmount
     });
 
-    // Registrar los blinds como apuestas
+    // Registrar los blinds como apuestas y restarlos de chips
+    players[positions.smallBlindIndex].chips -= smallBlindAmount;
     players[positions.smallBlindIndex].committed = smallBlindAmount;
+    players[positions.bigBlindIndex].chips -= bigBlindAmount;
     players[positions.bigBlindIndex].committed = bigBlindAmount;
 
     await game.update({ players });
@@ -132,6 +151,178 @@ export const initializeGame = async (tableId, playersData) => {
   } catch (error) {
     throw new Error(`Error inicializando juego: ${error.message}`);
   }
+};
+
+/**
+ * Repartir cartas comunitarias según la fase siguiente
+ */
+const dealCommunityForNextPhase = (game, nextPhase) => {
+  // Normalizar deck y community a arrays reales (pueden venir como string JSON desde DB)
+  let deck = Array.isArray(game.deck)
+    ? [...game.deck]
+    : (typeof game.deck === 'string'
+        ? JSON.parse(game.deck || '[]')
+        : (game.deck ? JSON.parse(JSON.stringify(game.deck)) : []));
+
+  let community = Array.isArray(game.communityCards)
+    ? [...game.communityCards]
+    : (typeof game.communityCards === 'string'
+        ? JSON.parse(game.communityCards || '[]')
+        : (game.communityCards ? JSON.parse(JSON.stringify(game.communityCards)) : []));
+
+  const burn = () => {
+    if (deck.length === 0) return;
+    deck.pop();
+  };
+
+  const deal = (count) => {
+    for (let i = 0; i < count; i++) {
+      if (deck.length === 0) break;
+      community.push(deck.pop());
+    }
+  };
+
+  switch (nextPhase) {
+    case 'flop':
+      burn();
+      deal(3);
+      break;
+    case 'turn':
+      burn();
+      deal(1);
+      break;
+    case 'river':
+      burn();
+      deal(1);
+      break;
+    default:
+      break;
+  }
+
+  game.deck = deck;
+  game.communityCards = community;
+};
+
+/**
+ * Determinar si sólo queda un jugador activo
+ */
+const getActivePlayers = (players) => players.filter(p => !p.folded);
+
+/**
+ * Resolver ganador por fold (solo queda uno activo)
+ */
+const finishByFold = async (game) => {
+  const active = getActivePlayers(game.players);
+  if (active.length !== 1) return null;
+
+  const winner = active[0];
+  winner.chips += game.pot;
+
+  game.status = 'finished';
+  game.winnerId = winner.userId;
+  game.pot = 0;
+  game.endTime = new Date();
+  game.players = JSON.parse(JSON.stringify(game.players));
+  game.changed('players', true);
+
+  await game.save();
+
+  return winner;
+};
+
+/**
+ * Resolver showdown calculando la mejor mano
+ */
+const finishShowdown = async (game) => {
+  const community = game.communityCards || [];
+  const contenders = getActivePlayers(game.players);
+
+  if (community.length < 5 || contenders.length === 0) {
+    return null;
+  }
+
+  let winners = [];
+  let bestEval = null;
+
+  contenders.forEach((player) => {
+    const bestHand = getBestHand(player.hand, community);
+    if (!bestEval) {
+      bestEval = bestHand;
+      winners = [player];
+      return;
+    }
+
+    const cmp = compareHands(bestHand, bestEval);
+    if (cmp === 1) {
+      bestEval = bestHand;
+      winners = [player];
+    } else if (cmp === 0) {
+      winners.push(player);
+    }
+  });
+
+  if (winners.length === 0) return null;
+
+  const share = Math.floor(game.pot / winners.length);
+  winners.forEach((p) => {
+    p.chips += share;
+  });
+
+  const potRemainder = game.pot - share * winners.length;
+  if (potRemainder > 0) {
+    winners[0].chips += potRemainder;
+  }
+
+  game.status = 'finished';
+  game.winnerId = winners[0].userId;
+  game.pot = 0;
+  game.endTime = new Date();
+  game.players = JSON.parse(JSON.stringify(game.players));
+  game.changed('players', true);
+
+  await game.save();
+
+  return winners[0];
+};
+
+/**
+ * Avanzar a la siguiente fase si corresponde
+ */
+const advanceGamePhase = async (game) => {
+  const nextPhase = advancePhase(game.phase);
+
+  if (!nextPhase) {
+    return await finishShowdown(game);
+  }
+
+  dealCommunityForNextPhase(game, nextPhase);
+
+  // Reset de apuestas para la nueva ronda (deep copy de players)
+  game.currentBet = 0;
+  const players = JSON.parse(JSON.stringify(game.players));
+  players.forEach((p) => {
+    p.committed = 0;
+    p.lastAction = null;
+    p.betInPhase = 0;
+  });
+  game.players = players;
+
+  const dealerIndex = game.players.findIndex(p => p.userId === game.dealerId);
+  const firstToAct = getFirstToActInPhase(game.players, dealerIndex, nextPhase);
+
+  game.phase = nextPhase;
+  game.currentPlayerIndex = firstToAct;
+
+  await game.update({
+    phase: game.phase,
+    communityCards: JSON.stringify(game.communityCards),
+    deck: JSON.stringify(game.deck),
+    players: game.players,
+    currentBet: 0,
+    currentPlayerIndex: game.currentPlayerIndex
+  });
+
+  return null;
 };
 
 /**
@@ -152,9 +343,10 @@ export const validateAction = (game, playerId, action, amount = 0) => {
     throw new Error('Ya hiciste fold en esta mano');
   }
 
-  const currentBet = game.currentBet;
+  // Convertir a números para evitar comparaciones de strings
+  const currentBet = parseInt(game.currentBet) || 0;
   const playerChips = currentPlayer.chips;
-  const playerCommitted = currentPlayer.committed;
+  const playerCommitted = parseInt(currentPlayer.committed) || 0;
 
   switch (action) {
     case 'fold':
@@ -199,6 +391,15 @@ export const validateAction = (game, playerId, action, amount = 0) => {
  * Procesar una acción en el juego
  */
 export const processPlayerAction = async (game, playerId, action, amount = 0) => {
+  // Asegurar que pot y currentBet son números ANTES de validar
+  game.pot = parseInt(game.pot) || 0;
+  game.currentBet = parseInt(game.currentBet) || 0;
+
+  // También convertir committed de todos los jugadores
+  game.players.forEach(p => {
+    p.committed = parseInt(p.committed) || 0;
+  });
+
   validateAction(game, playerId, action, amount);
 
   const players = game.players;
@@ -217,16 +418,17 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
       break;
 
     case 'call':
-      const callAmount = game.currentBet - currentPlayer.committed;
+      const playerCommittedNum = parseInt(currentPlayer.committed) || 0;
+      const callAmount = game.currentBet - playerCommittedNum;
       currentPlayer.chips -= callAmount;
-      currentPlayer.committed += callAmount;
+      currentPlayer.committed = playerCommittedNum + callAmount;
       game.pot += callAmount;
       totalBet = callAmount;
       break;
 
     case 'raise':
       currentPlayer.chips -= amount;
-      currentPlayer.committed += amount;
+      currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + amount;
       game.pot += amount;
       game.currentBet = currentPlayer.committed;
       totalBet = amount;
@@ -235,13 +437,19 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
     case 'all-in':
       totalBet = currentPlayer.chips;
       game.pot += currentPlayer.chips;
-      currentPlayer.committed += currentPlayer.chips;
+      currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + currentPlayer.chips;
       currentPlayer.chips = 0;
       if (currentPlayer.committed > game.currentBet) {
         game.currentBet = currentPlayer.committed;
       }
       break;
   }
+
+  currentPlayer.lastAction = action;
+  currentPlayer.betInPhase = (currentPlayer.betInPhase || 0) + totalBet;
+
+  // Normalizar referencia explícitamente (algunas implementaciones de JSON pueden entregar copias)
+  players[currentPlayerIndex] = { ...currentPlayer };
 
   // Mover al siguiente jugador que no está folded
   let nextIndex = (currentPlayerIndex + 1) % players.length;
@@ -251,17 +459,82 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
     nextIndex = (nextIndex + 1) % players.length;
     if (nextIndex === startIndex) {
       // Todos excepto uno han hecho fold
-      return { gameOver: true, message: 'Solo un jugador restante' };
+      const winner = await finishByFold(game);
+      return { gameOver: true, winner };
     }
   }
 
-  game.currentPlayerIndex = nextIndex;
-  await game.update({ 
-    players, 
-    pot: game.pot,
+  // Verificar si la ronda de apuestas terminó
+  const dealerIndex = players.findIndex(p => p.userId === game.dealerId);
+  const firstToAct = getFirstToActInPhase(players, dealerIndex, game.phase);
+  const activePlayers = getActivePlayers(players);
+
+  let roundComplete = checkAllPlayersActed(players, dealerIndex);
+
+  // Debug: estado antes de decidir avanzar de fase
+  console.log('[DEBUG][ROUND_CHECK]', {
+    phase: game.phase,
     currentBet: game.currentBet,
-    currentPlayerIndex: game.currentPlayerIndex
+    dealerIndex,
+    firstToAct,
+    currentPlayerIndex,
+    nextIndex,
+    roundComplete,
+    activePlayers: activePlayers.map(p => ({
+      userId: p.userId,
+      committed: parseInt(p.committed) || 0,
+      chips: p.chips,
+      lastAction: p.lastAction,
+      betInPhase: p.betInPhase || 0,
+      folded: p.folded
+    }))
   });
+
+  // Fallback: si todos actuaron, las apuestas están igualadas
+  // y volvimos al primer jugador de la fase, cerramos la ronda.
+  if (!roundComplete) {
+    const currentBetNum = parseInt(game.currentBet) || 0;
+    const allMatched = activePlayers.every(p => {
+      const committed = parseInt(p.committed) || 0;
+      return committed >= currentBetNum || p.chips === 0;
+    });
+    const everyoneActed = activePlayers.every(p => p.lastAction);
+
+    if (everyoneActed && allMatched && nextIndex === firstToAct) {
+      roundComplete = true;
+    }
+  }
+
+  if (activePlayers.length === 1) {
+    const winner = await finishByFold(game);
+    return { gameOver: true, winner };
+  }
+
+  if (roundComplete) {
+    // Deep copy limpio para guardar
+    game.players = JSON.parse(JSON.stringify(players));
+    game.changed('players', true);
+    
+    // Guardar el estado actualizado antes de avanzar fase
+    await game.save();
+
+    if (game.phase === 'river') {
+      const winner = await finishShowdown(game);
+      return { gameOver: true, winner };
+    }
+
+    await advanceGamePhase(game);
+    return {
+      phaseAdvanced: true,
+      gameState: await getGameState(game.id)
+    };
+  }
+
+  game.currentPlayerIndex = nextIndex;
+  game.players = JSON.parse(JSON.stringify(players));  // Deep copy limpio
+  game.changed('players', true);
+  
+  await game.save();
 
   return { 
     success: true, 
@@ -291,21 +564,28 @@ export const getGameState = async (gameId) => {
 
   if (!game) throw new Error('Juego no encontrado');
 
+  // Parse JSON fields si son strings
+  const communityCards = typeof game.communityCards === 'string' 
+    ? JSON.parse(game.communityCards || '[]')
+    : (game.communityCards || []);
+
   return {
     id: game.id,
     tableId: game.tableId,
     table: game.Table,
     phase: game.phase,
     status: game.status,
-    pot: game.pot,
-    communityCards: game.communityCards,
-    currentBet: game.currentBet,
+    pot: parseInt(game.pot) || 0,
+    communityCards: communityCards,
+    currentBet: parseInt(game.currentBet) || 0,
     currentPlayerIndex: game.currentPlayerIndex,
     players: game.players.map((p, idx) => ({
       userId: p.userId,
       chips: p.chips,
-      committed: p.committed,
+      committed: parseInt(p.committed) || 0,
       folded: p.folded,
+      lastAction: p.lastAction || null,
+      betInPhase: p.betInPhase || 0,
       isCurrentPlayer: idx === game.currentPlayerIndex,
       cardsHidden: true // Las cartas se ven según permisos
     })),

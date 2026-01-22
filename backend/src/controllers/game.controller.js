@@ -126,15 +126,19 @@ export const playerAction = async (req, res) => {
     const result = await processPlayerAction(game, userId, action, amount || 0);
 
     if (result.gameOver) {
-      // Manejar fin del juego aquí (próximo paso)
-      game.status = 'finished';
-      await game.save();
-      
       return res.json({
         success: true,
-        action: result.message,
         gameOver: true,
+        winner: result.winner || null,
         gameState: await getGameState(gameId)
+      });
+    }
+
+    if (result.phaseAdvanced) {
+      return res.json({
+        success: true,
+        phaseAdvanced: true,
+        gameState: result.gameState
       });
     }
 

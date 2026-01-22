@@ -72,6 +72,18 @@ export const resetBetsForNextPhase = (players) => {
 export const getFirstToActInPhase = (players, dealerIndex, phase) => {
   const count = players.length;
   
+  if (count === 2) {
+    // HEADS-UP ESPECIAL
+    if (phase === 'preflop') {
+      // Preflop: dealer (SB) actúa primero en heads-up
+      return dealerIndex;
+    } else {
+      // Postflop: otro jugador (BB) actúa primero
+      return (dealerIndex + 1) % count;
+    }
+  }
+  
+  // 6-max+ estándar
   if (phase === 'preflop') {
     // Preflop: el jugador después del BB actúa primero
     const bbIndex = (dealerIndex + 2) % count;
@@ -106,7 +118,7 @@ export const checkAllPlayersActed = (players, dealerIndex) => {
   }
 
   // Verificar que todos los jugadores activos han actuado
-  const allActed = activePlayers.every(p => p.lastAction !== null);
+  const allActed = activePlayers.every(p => p.lastAction);
   
   if (!allActed) return false;
 
@@ -114,7 +126,7 @@ export const checkAllPlayersActed = (players, dealerIndex) => {
   // (excepto los que están all-in)
   const committedAmounts = activePlayers
     .filter(p => p.chips > 0)
-    .map(p => p.committed);
+    .map(p => parseInt(p.committed) || 0);
 
   if (committedAmounts.length === 0) return true;
 

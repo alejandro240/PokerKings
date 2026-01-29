@@ -14,7 +14,18 @@ const Game = sequelize.define('Game', {
   },
   winnerId: {
     type: DataTypes.UUID,
-    references: { model: 'users', key: 'id' }
+    references: { model: 'users', key: 'id' },
+    comment: 'Primary winner (for backward compatibility)'
+  },
+  winnerIds: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of all winner user IDs (for split pots)'
+  },
+  winners: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of {userId, username, chips, hand, description} for all winners'
   },
   pot: {
     type: DataTypes.BIGINT,

@@ -130,7 +130,7 @@ export const playerAction = async (req, res) => {
         success: true,
         gameOver: true,
         winner: result.winner || null,
-        gameState: await getGameState(gameId)
+        gameState: await getGameState(gameId, false)
       });
     }
 
@@ -146,7 +146,7 @@ export const playerAction = async (req, res) => {
       success: true,
       action: result.action,
       amount: result.amount,
-      gameState: await getGameState(gameId)
+      gameState: await getGameState(gameId, false)
     });
 
   } catch (error) {

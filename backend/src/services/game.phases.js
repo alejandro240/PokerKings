@@ -110,23 +110,26 @@ export const getFirstToActInPhase = (players, dealerIndex, phase) => {
  * (Y sus bets están equilibradas, excepto all-in)
  */
 export const checkAllPlayersActed = (players, dealerIndex) => {
-  const activePlayers = players.filter(p => !p.folded && p.chips > 0);
+  // Jugadores con chips pueden seguir actuando
+  const playersWithChips = players.filter(p => !p.folded && p.chips > 0);
   
-  // Si solo 1 jugador activo, todos han actuado
-  if (activePlayers.length <= 1) {
+  // Si solo hay 1 jugador o ninguno con chips, verificar si ese jugador actuó
+  if (playersWithChips.length <= 1) {
+    // Si solo hay 1 jugador con chips, verificar que haya actuado
+    if (playersWithChips.length === 1) {
+      return !!playersWithChips[0].lastAction;
+    }
+    // Si no hay jugadores con chips (todos all-in), la ronda terminó
     return true;
   }
 
-  // Verificar que todos los jugadores activos han actuado
-  const allActed = activePlayers.every(p => p.lastAction);
+  // Verificar que todos los jugadores con chips han actuado
+  const allActed = playersWithChips.every(p => p.lastAction);
   
   if (!allActed) return false;
 
-  // Verificar que todos tienen la misma cantidad commited
-  // (excepto los que están all-in)
-  const committedAmounts = activePlayers
-    .filter(p => p.chips > 0)
-    .map(p => parseInt(p.committed) || 0);
+  // Verificar que todos los jugadores con chips tienen la misma cantidad committed
+  const committedAmounts = playersWithChips.map(p => parseInt(p.committed) || 0);
 
   if (committedAmounts.length === 0) return true;
 

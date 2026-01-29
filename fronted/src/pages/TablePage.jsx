@@ -4,6 +4,7 @@ import BettingActions from '../components/table/BettingActions';
 import CommunityCards from '../components/table/CommunityCards';
 import usePokerGame from '../hooks/usePokerGame';
 import { gameAPI } from '../services/api';
+import { gameSocket } from '../services/gameSocket';
 import './TablePage.css';
 
 function TablePage({ table, user, onNavigate }) {

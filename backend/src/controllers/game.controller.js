@@ -1,5 +1,6 @@
 import { Game, Table, User, Hand, HandAction } from '../models/index.js';
 import { Op } from 'sequelize';
+import { getIO } from '../config/socket.js';
 import {
   initializeGame,
   processPlayerAction,
@@ -92,10 +93,21 @@ export const startGame = async (req, res) => {
       currentPlayers: playerIds.length
     });
 
+    const gameState = await getGameState(game.id);
+
+    // Emitir evento WebSocket para actualizar el frontend en tiempo real
+    try {
+      const io = getIO();
+      io.to(`table_${tableId}`).emit('gameStateUpdated', gameState);
+      console.log(`📡 Evento gameStateUpdated emitido para mesa ${tableId}`);
+    } catch (err) {
+      console.warn('⚠️  No se pudo emitir evento WebSocket:', err.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Juego iniciado',
-      game: await getGameState(game.id)
+      game: gameState
     });
 
   } catch (error) {

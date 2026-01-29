@@ -1,11 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { gameSocket } from '../services/gameSocket';
 
 /**
  * Custom hook for managing poker game state
- * This will integrate with backend game logic once implemented
+ * Integrado con backend a través de WebSocket
  */
 const usePokerGame = () => {
   // Game state
+  const [gameId, setGameId] = useState(null);
   const [gamePhase, setGamePhase] = useState('waiting'); // waiting, pre-flop, flop, turn, river, showdown
   const [pot, setPot] = useState(0);
   const [sidePots, setSidePots] = useState([]);
@@ -24,116 +26,152 @@ const usePokerGame = () => {
   const [playerBet, setPlayerBet] = useState(0);
   const [playerHasFolded, setPlayerHasFolded] = useState(false);
   const [playerHasActed, setPlayerHasActed] = useState(false);
+  const [playerIndex, setPlayerIndex] = useState(0);
 
   // All players state (for display)
   const [players, setPlayers] = useState([]);
+  
+  // Winners from backend
+  const [winners, setWinners] = useState([]); // Para múltiples ganadores
+  const [winnerIds, setWinnerIds] = useState([]); // IDs de ganadores
 
-  // Actions that will connect to backend
-  const handleFold = useCallback(() => {
-    setPlayerHasFolded(true);
-    setPlayerHasActed(true);
-    
-    // TODO: Send to backend
-    console.log('Player folded');
+  // Configurar listeners de WebSocket al montar
+  useEffect(() => {
+    gameSocket.connect();
+
+    // Actualizar estado del juego desde backend
+    gameSocket.on('gameStateUpdated', (gameState) => {
+      if (gameState) {
+        setGameId(gameState.id);
+        setGamePhase(gameState.status || 'waiting');
+        setPot(gameState.pot || 0);
+        setSidePots(gameState.sidePots || []);
+        setCommunityCards(gameState.communityCards || []);
+        setCurrentBet(gameState.currentBet || 0);
+        setMinRaise(gameState.minRaise || 0);
+        setDealerPosition(gameState.dealerIndex || 0);
+        
+        // Actualizar estado del jugador actual
+        if (gameState.players && gameState.players.length > 0) {
+          setPlayers(gameState.players);
+          
+          // Encontrar al jugador actual
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const currentIdx = gameState.players.findIndex(p => p.userId === currentUser.id);
+          if (currentIdx !== -1) {
+            setPlayerIndex(currentIdx);
+            const currentPlayer = gameState.players[currentIdx];
+            setPlayerChips(currentPlayer.chips || 0);
+            setPlayerBet(currentPlayer.bet || 0);
+            setPlayerHoleCards(currentPlayer.holeCards || []);
+            setPlayerHasFolded(currentPlayer.folded || false);
+          }
+        }
+        
+        // Actualizar turno actual
+        if (gameState.currentPlayerIndex !== undefined) {
+          setCurrentPlayerTurn(gameState.currentPlayerIndex);
+        }
+        
+        // Guardar múltiples ganadores si están disponibles
+        if (gameState.winners) {
+          setWinners(gameState.winners);
+        }
+        if (gameState.winnerIds) {
+          setWinnerIds(gameState.winnerIds);
+        }
+      }
+    });
+
+    // Cambio de fase
+    gameSocket.on('phaseChanged', (phaseData) => {
+      if (phaseData.phase) {
+        setGamePhase(phaseData.phase);
+        setCommunityCards(phaseData.communityCards || []);
+      }
+    });
+
+    // Fin del juego / Showdown
+    gameSocket.on('showdown', (showdownData) => {
+      setGamePhase('showdown');
+      if (showdownData.winners) {
+        setWinners(showdownData.winners);
+      }
+      if (showdownData.winnerIds) {
+        setWinnerIds(showdownData.winnerIds);
+      }
+      if (showdownData.pot) {
+        setPot(showdownData.pot);
+      }
+    });
+
+    return () => {
+      // Limpiar listeners al desmontar
+      gameSocket.off('gameStateUpdated', null);
+      gameSocket.off('phaseChanged', null);
+      gameSocket.off('showdown', null);
+    };
   }, []);
+
+  // Actions que envían al backend
+  const handleFold = useCallback(() => {
+    if (gameId && playerIndex !== undefined) {
+      gameSocket.playerAction(gameId, playerIndex, 'fold');
+      setPlayerHasFolded(true);
+      setPlayerHasActed(true);
+    }
+  }, [gameId, playerIndex]);
 
   const handleCheck = useCallback(() => {
-    setPlayerHasActed(true);
-    
-    // TODO: Send to backend
-    console.log('Player checked');
-  }, []);
+    if (gameId && playerIndex !== undefined) {
+      gameSocket.playerAction(gameId, playerIndex, 'check');
+      setPlayerHasActed(true);
+    }
+  }, [gameId, playerIndex]);
 
   const handleCall = useCallback(() => {
-    const callAmount = currentBet - playerBet;
-    setPlayerBet(currentBet);
-    setPlayerChips(prev => prev - callAmount);
-    setPot(prev => prev + callAmount);
-    setPlayerHasActed(true);
-    
-    // TODO: Send to backend
-    console.log('Player called', callAmount);
-  }, [currentBet, playerBet]);
+    if (gameId && playerIndex !== undefined) {
+      const callAmount = currentBet - playerBet;
+      gameSocket.playerAction(gameId, playerIndex, 'call', callAmount);
+      setPlayerBet(currentBet);
+      setPlayerChips(prev => prev - callAmount);
+      setPlayerHasActed(true);
+    }
+  }, [gameId, playerIndex, currentBet, playerBet]);
 
   const handleRaise = useCallback((raiseAmount) => {
-    const totalBet = currentBet + raiseAmount;
-    const additionalChips = totalBet - playerBet;
-    
-    setPlayerBet(totalBet);
-    setPlayerChips(prev => prev - additionalChips);
-    setPot(prev => prev + additionalChips);
-    setCurrentBet(totalBet);
-    setMinRaise(raiseAmount);
-    setPlayerHasActed(true);
-    
-    // TODO: Send to backend
-    console.log('Player raised to', totalBet);
-  }, [currentBet, playerBet]);
+    if (gameId && playerIndex !== undefined) {
+      const totalBet = currentBet + raiseAmount;
+      gameSocket.playerAction(gameId, playerIndex, 'raise', totalBet);
+      setPlayerBet(totalBet);
+      setPlayerChips(prev => prev - (totalBet - playerBet));
+      setCurrentBet(totalBet);
+      setMinRaise(raiseAmount);
+      setPlayerHasActed(true);
+    }
+  }, [gameId, playerIndex, currentBet, playerBet]);
 
   const handleAllIn = useCallback(() => {
-    const allInAmount = playerChips;
-    const totalBet = playerBet + allInAmount;
-    
-    setPlayerBet(totalBet);
-    setPlayerChips(0);
-    setPot(prev => prev + allInAmount);
-    
-    if (totalBet > currentBet) {
-      setCurrentBet(totalBet);
-      setMinRaise(totalBet - currentBet);
+    if (gameId && playerIndex !== undefined) {
+      const allInAmount = playerChips;
+      gameSocket.playerAction(gameId, playerIndex, 'allIn', allInAmount);
+      setPlayerBet(playerBet + allInAmount);
+      setPlayerChips(0);
+      setPlayerHasActed(true);
     }
-    
-    setPlayerHasActed(true);
-    
-    // TODO: Send to backend
-    console.log('Player went all-in with', allInAmount);
-  }, [playerChips, playerBet, currentBet]);
+  }, [gameId, playerIndex, playerChips, playerBet]);
 
-  // Game phase progression (backend will control this)
+  // Game phase progression (backend controls)
   const advanceGamePhase = useCallback(() => {
-    const phaseOrder = ['waiting', 'pre-flop', 'flop', 'turn', 'river', 'showdown'];
-    const currentIndex = phaseOrder.indexOf(gamePhase);
-    
-    if (currentIndex < phaseOrder.length - 1) {
-      const nextPhase = phaseOrder[currentIndex + 1];
-      setGamePhase(nextPhase);
-      
-      // Reset betting for new round
-      setCurrentBet(0);
-      setPlayerBet(0);
-      setPlayerHasActed(false);
-      
-      console.log('Advanced to phase:', nextPhase);
-    }
-  }, [gamePhase]);
+    // Backend maneja el avance de fases
+    console.log('Esperando al backend para avanzar fase...');
+  }, []);
 
-  // Initialize new game (mock - backend will handle)
-  const startNewGame = useCallback((initialPlayers, playerIndex, smallBlind, bigBlind) => {
-    // Reset game state
-    setGamePhase('pre-flop');
-    setPot(smallBlind + bigBlind);
-    setSidePots([]);
-    setCommunityCards([]);
-    setCurrentBet(bigBlind);
-    setMinRaise(bigBlind);
-    setTurnTimeRemaining(30);
-    
-    // Set positions
-    setDealerPosition(0);
-    setSmallBlindPosition(1);
-    setBigBlindPosition(2);
-    setCurrentPlayerTurn((2 + 1) % initialPlayers.length); // First to act after big blind
-    
-    // Set player state
-    setPlayerHoleCards([]);
-    setPlayerBet(playerIndex === 1 ? smallBlind : playerIndex === 2 ? bigBlind : 0);
-    setPlayerHasFolded(false);
-    setPlayerHasActed(false);
-    
-    // Set all players
-    setPlayers(initialPlayers);
-    
-    console.log('New game started');
+  // Initialize new game - AHORA CONECTA CON BACKEND
+  const startNewGame = useCallback((initialPlayers, playerIdx, smallBlind, bigBlind) => {
+    setPlayerIndex(playerIdx);
+    // El backend se encargará de iniciar el juego
+    console.log('Esperando al backend para iniciar el juego...');
   }, []);
 
   // Update community cards (backend will send)
@@ -160,7 +198,8 @@ const usePokerGame = () => {
   const canAllIn = playerChips > 0 && !playerHasFolded && !playerHasActed;
 
   return {
-    // State
+    // Game state
+    gameId,
     gamePhase,
     pot,
     sidePots,
@@ -178,6 +217,10 @@ const usePokerGame = () => {
     playerHasFolded,
     playerHasActed,
     players,
+    
+    // Winners (múltiples ganadores)
+    winners,
+    winnerIds,
     
     // Action checks
     canCheck,
@@ -209,6 +252,7 @@ const usePokerGame = () => {
     setBigBlindPosition,
     setPlayerHoleCards,
     setPlayers,
+    setGameId,
   };
 };
 

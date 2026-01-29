@@ -33,7 +33,7 @@ function CreateTablePage({ onNavigate, onCreate }) {
           ← Volver
         </button>
 
-        <h1 className="create-title">🔒 Crear Mesa Privada</h1>
+        <h1 className="create-title">{formData.isPrivate ? '🔒' : '🔓'} Crear Mesa {formData.isPrivate ? 'Privada' : 'Pública'}</h1>
         <p className="create-subtitle">Configura tu mesa personalizada</p>
 
         <form onSubmit={handleSubmit} className="create-form">
@@ -70,6 +70,34 @@ function CreateTablePage({ onNavigate, onCreate }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Tipo de mesa: Pública/Privada */}
+          <div className="form-group">
+            <label className="form-label">
+              🔒 Tipo de Mesa
+            </label>
+            <div className="button-group">
+              <button
+                type="button"
+                className={`btn-option ${!formData.isPrivate ? 'active' : ''}`}
+                onClick={() => setFormData(prev => ({ ...prev, isPrivate: false }))}
+              >
+                🔓 Pública
+              </button>
+              <button
+                type="button"
+                className={`btn-option ${formData.isPrivate ? 'active' : ''}`}
+                onClick={() => setFormData(prev => ({ ...prev, isPrivate: true }))}
+              >
+                🔒 Privada
+              </button>
+            </div>
+            <p className="form-hint">
+              {formData.isPrivate 
+                ? 'Solo jugadores invitados pueden unirse' 
+                : 'Cualquiera puede unirse desde el lobby'}
+            </p>
           </div>
 
           {/* Número de bots */}
@@ -141,6 +169,10 @@ function CreateTablePage({ onNavigate, onCreate }) {
             <div className="summary-item">
               <span>Mesa:</span>
               <strong>{formData.tableName || 'Sin nombre'}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Tipo:</span>
+              <strong>{formData.isPrivate ? '🔒 Privada' : '🔓 Pública'}</strong>
             </div>
             <div className="summary-item">
               <span>Jugadores:</span>

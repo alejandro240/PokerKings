@@ -79,6 +79,37 @@ export const tableAPI = {
     apiClient.get(`/tables/${tableId}`),
 };
 
+// ============= JUEGO (INTEGRACIÓN CON BACKEND) =============
+export const gameAPI = {
+  // Crear/iniciar un juego
+  startGame: (tableId, playerIds) =>
+    apiClient.post('/games/start', { tableId, playerIds }),
+  
+  // Obtener estado del juego
+  getGame: (gameId) =>
+    apiClient.get(`/games/${gameId}`),
+  
+  // Enviar acción del jugador
+  playerAction: (gameId, action, amount = 0) =>
+    apiClient.post(`/games/${gameId}/action`, { action, amount }),
+  
+  // Obtener historial de juegos
+  getPlayerGames: (userId) =>
+    apiClient.get(`/games/player/${userId}`),
+  
+  // Obtener historial de la mesa
+  getGameHistory: (tableId) =>
+    apiClient.get(`/games/table/${tableId}/history`),
+  
+  // Obtener detalles de una mano
+  getHandDetails: (gameId, handId) =>
+    apiClient.get(`/games/${gameId}/hands/${handId}`),
+  
+  // Salir de un juego
+  leaveGame: (gameId) =>
+    apiClient.post(`/games/${gameId}/leave`),
+};
+
 // ============= TIENDA =============
 export const shopAPI = {
   buyChips: (packageId, amount) =>

@@ -36,17 +36,29 @@ function Login({ onLoginSuccess, onSwitchToRegister }) {
 
   // Login rápido para pruebas
   const handleQuickLogin = async (userNumber) => {
+    setError('');
     setLoading(true);
-    const result = await authService.login(
-      `jugador${userNumber}@pokerkings.com`,
-      'password123'
-    );
-    if (result.success) {
-      onLoginSuccess(result.user);
-    } else {
-      setError(result.error);
+    try {
+      const email = `jugador${userNumber}@pokerkings.com`;
+      console.log('🔐 Intentando login con:', email);
+      
+      const result = await authService.login(email, 'password123');
+      
+      console.log('📊 Resultado del login:', result);
+      
+      if (result.success) {
+        console.log('✅ Login exitoso:', result.user);
+        onLoginSuccess(result.user);
+      } else {
+        console.error('❌ Login fallido:', result.error);
+        setError(result.error || 'Error al iniciar sesión');
+      }
+    } catch (err) {
+      console.error('💥 Error en login rápido:', err);
+      setError(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

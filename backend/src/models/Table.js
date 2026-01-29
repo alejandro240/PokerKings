@@ -38,6 +38,11 @@ const Table = sequelize.define('Table', {
   currentPlayers: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  botsCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Número de bots a agregar automáticamente'
   }
 }, {
   timestamps: true,

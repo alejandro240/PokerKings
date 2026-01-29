@@ -3,6 +3,7 @@ import PokerTable from '../components/table/PokerTable';
 import BettingActions from '../components/table/BettingActions';
 import CommunityCards from '../components/table/CommunityCards';
 import usePokerGame from '../hooks/usePokerGame';
+import { gameAPI } from '../services/api';
 import './TablePage.css';
 
 function TablePage({ table, user, onNavigate }) {
@@ -11,83 +12,109 @@ function TablePage({ table, user, onNavigate }) {
   const [isSpectator, setIsSpectator] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Usar el hook de juego de póker
+  // Usar el hook de juego de póker (conectado con backend)
   const pokerGame = usePokerGame();
 
+  // Sincronizar jugadores desde el backend
   useEffect(() => {
-    if (table) {
-      // Inicializar jugadores: el usuario actual + bots si se configuraron
-      const initialPlayers = [];
-      
-      // Agregar el usuario actual como primer jugador
-      if (user && !isSpectator) {
-        initialPlayers.push({
-          username: user.username,
-          chips: user.chips || 5000,
-          avatar: user.avatar && user.avatar !== 'default-avatar.png' ? user.avatar : '🎮',
-          level: user.level || 1
-        });
-      }
-      
-      // Agregar bots si se configuraron
-      if (table.botsCount) {
-        for (let i = 0; i < table.botsCount; i++) {
-          initialPlayers.push({
-            username: `Bot ${i + 1}`,
-            chips: 5000,
-            avatar: '🤖',
-            level: Math.floor(Math.random() * 20) + 1 // Nivel aleatorio entre 1-20
-          });
-        }
-      }
-      
-      // Rellenar asientos vacíos hasta maxPlayers
-      while (initialPlayers.length < table.maxPlayers) {
-        initialPlayers.push(null);
-      }
-      
-      setPlayers(initialPlayers);
-
-      // Inicializar el juego cuando hay suficientes jugadores
-      const activePlayers = initialPlayers.filter(p => p !== null);
-      if (activePlayers.length >= 2) {
-        // Determinar el índice del jugador actual
-        const playerIndex = activePlayers.findIndex(p => p.username === user?.username);
-        
-        // Iniciar juego (después el backend enviará esto)
-        setTimeout(() => {
-          pokerGame.startNewGame(
-            activePlayers, 
-            playerIndex >= 0 ? playerIndex : 0,
-            table.smallBlind || 50,
-            table.bigBlind || 100
-          );
-          pokerGame.updatePlayerChips(user?.chips || 5000);
-        }, 1000);
-      }
+    if (pokerGame.players && pokerGame.players.length > 0) {
+      setPlayers(pokerGame.players);
     }
-  }, [table, user, isSpectator]);
+  }, [pokerGame.players]);
+
+  // Inicializar el juego desde el backend
+  useEffect(() => {
+    const initializeGame = async () => {
+      if (!table || !user) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Crear lista de jugadores para el backend
+        const playerIds = [user.id]; // Comenzar con el usuario actual
+        
+        // El backend manejará agregar más jugadores si existen en la mesa
+        // Por ahora, solo enviar el usuario actual
+        
+        // Iniciar el juego en el backend
+        const response = await gameAPI.startGame(table.id, playerIds);
+        
+        // El backend devuelve response.data.game con el estado del juego
+        const gameData = response.data.game || response.data;
+        const gameId = gameData.id;
+        
+        if (gameId) {
+          // Guardar el ID del juego
+          pokerGame.setGameId(gameId);
+          
+          // El hook usePokerGame recibirá actualizaciones via WebSocket
+          console.log('✅ Juego iniciado/unido:', gameId);
+        } else {
+          console.error('⚠️ No se recibió ID de juego del backend', response.data);
+        }
+      } catch (err) {
+        console.error('❌ Error al iniciar el juego:', err);
+        setError('No se pudo iniciar el juego. Intenta de nuevo.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Esperar un poco antes de inicializar (para que el WebSocket esté listo)
+    const timer = setTimeout(() => {
+      initializeGame();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [table, user]);
 
   // Manejar levantarse (modo espectador)
-  const handleStandUp = () => {
-    setIsSpectator(true);
-    setShowMenu(false);
-    console.log('👁️ Usuario cambió a modo espectador');
+  const handleStandUp = async () => {
+    try {
+      if (pokerGame.gameId) {
+        await gameAPI.leaveGame(pokerGame.gameId);
+      }
+      setIsSpectator(true);
+      setShowMenu(false);
+      console.log('👁️ Usuario cambió a modo espectador');
+    } catch (err) {
+      console.error('Error al cambiar a modo espectador:', err);
+    }
   };
 
   // Manejar volver a sentarse
-  const handleSitDown = () => {
-    setIsSpectator(false);
-    console.log('🪡 Usuario volvió a sentarse en la mesa');
+  const handleSitDown = async () => {
+    try {
+      if (table && user) {
+        const response = await gameAPI.startGame(table.id, [user.id]);
+        if (response.data) {
+          pokerGame.setGameId(response.data.id);
+        }
+      }
+      setIsSpectator(false);
+      console.log('🪡 Usuario volvió a sentarse en la mesa');
+    } catch (err) {
+      console.error('Error al volver a sentarse:', err);
+    }
   };
 
   // Manejar abandonar partida
-  const handleLeaveTable = () => {
+  const handleLeaveTable = async () => {
     const confirm = window.confirm('¿Estás seguro de que quieres abandonar la partida?');
     if (confirm) {
-      console.log('🚻 Usuario abandonó la mesa');
-      onNavigate('home');
+      try {
+        if (pokerGame.gameId) {
+          await gameAPI.leaveGame(pokerGame.gameId);
+        }
+        console.log('🚻 Usuario abandonó la mesa');
+        onNavigate('home');
+      } catch (err) {
+        console.error('Error al abandonar:', err);
+      }
     }
   };
 
@@ -133,6 +160,27 @@ function TablePage({ table, user, onNavigate }) {
     );
   }
 
+  if (loading) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#e0e0e0' }}>
+        <h2>Iniciando juego...</h2>
+        <p>Conectando con el servidor...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#ff6b6b' }}>
+        <h2>Error</h2>
+        <p>{error}</p>
+        <button className="btn btn-primary" onClick={() => onNavigate('lobby')}>
+          Volver al lobby
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="table-page">
       {/* Header con información de la mesa */}
@@ -145,9 +193,10 @@ function TablePage({ table, user, onNavigate }) {
           <h2 className="table-title">{table.name}</h2>
           <div className="table-stats">
             <span className="stat">💰 Ciegas: {table.smallBlind}/{table.bigBlind}</span>
-            <span className="stat">👥 Jugadores: {players.filter(p => p !== null).length}/{table.maxPlayers}</span>
+            <span className="stat">👥 Jugadores: {pokerGame.players.filter(p => p).length}/{table.maxPlayers}</span>
             {table.isPrivate && <span className="stat">🔒 Privada</span>}
             {isSpectator && <span className="stat spectator-badge">👁️ Modo Espectador</span>}
+            <span className="stat">🎮 Fase: {pokerGame.gamePhase}</span>
           </div>
         </div>
 

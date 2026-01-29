@@ -64,8 +64,14 @@ export const authService = {
 
       return { success: true, user, token };
     } catch (error) {
+      // Log detallado del error
+      console.error('❌ Error de login en backend:');
+      console.error('   Status:', error.response?.status);
+      console.error('   Data:', error.response?.data);
+      console.error('   Message:', error.message);
+      
       // Si el backend falla, buscar usuario mock en localStorage
-      console.warn('Backend login falló, intentando con usuario mock local');
+      console.warn('Intentando con usuario mock local...');
       
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
@@ -82,7 +88,7 @@ export const authService = {
       // Si no hay usuario local, retornar error
       return {
         success: false,
-        error: 'Usuario o contraseña incorrectos',
+        error: error.response?.data?.message || 'Usuario o contraseña incorrectos',
       };
     }
   },

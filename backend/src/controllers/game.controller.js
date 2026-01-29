@@ -1,4 +1,5 @@
 import { Game, Table, User, Hand, HandAction } from '../models/index.js';
+import { Op } from 'sequelize';
 import {
   initializeGame,
   processPlayerAction,
@@ -13,11 +14,11 @@ import {
  */
 export const startGame = async (req, res) => {
   try {
-    const { tableId, playerIds } = req.body;
+    let { tableId, playerIds } = req.body;
 
-    if (!tableId || !playerIds || playerIds.length < 2) {
+    if (!tableId || !playerIds || playerIds.length < 1) {
       return res.status(400).json({ 
-        error: 'Se requieren tableId y al menos 2 jugadores' 
+        error: 'Se requieren tableId y al menos 1 jugador' 
       });
     }
 
@@ -33,9 +34,36 @@ export const startGame = async (req, res) => {
     });
 
     if (activeGame) {
-      return res.status(400).json({ 
-        error: 'Ya hay un juego activo en esta mesa' 
+      console.log('ℹ️  Ya hay un juego activo, devolviendo ese juego');
+      // Si ya hay un juego activo, devolver ese juego en lugar de crear uno nuevo
+      return res.status(200).json({
+        success: true,
+        message: 'Unido a juego existente',
+        game: await getGameState(activeGame.id)
       });
+    }
+
+    // Agregar bots según la configuración de la mesa
+    const botsToAdd = table.botsCount || 0;
+    
+    if (botsToAdd > 0) {
+      console.log(`⚠️  Agregando ${botsToAdd} bots según configuración de la mesa...`);
+      
+      // Buscar otros usuarios disponibles para simular jugadores (bots)
+      const availablePlayers = await User.findAll({
+        where: { 
+          id: { [Op.notIn]: playerIds }
+        },
+        limit: botsToAdd,
+        order: [['createdAt', 'ASC']]
+      });
+
+      // Agregar los bots
+      for (let i = 0; i < Math.min(availablePlayers.length, botsToAdd); i++) {
+        playerIds.push(availablePlayers[i].id);
+      }
+
+      console.log(`✅ ${Math.min(availablePlayers.length, botsToAdd)} bots agregados. Total jugadores: ${playerIds.length}`);
     }
 
     // Obtener datos de los jugadores (chips de su cuenta)
@@ -44,8 +72,10 @@ export const startGame = async (req, res) => {
       attributes: ['id', 'chips']
     });
 
-    if (players.length !== playerIds.length) {
-      return res.status(404).json({ error: 'Uno o más jugadores no existen' });
+    if (players.length < 2) {
+      return res.status(400).json({ 
+        error: 'No hay suficientes jugadores disponibles. Crea más usuarios de prueba.' 
+      });
     }
 
     // Inicializar el juego

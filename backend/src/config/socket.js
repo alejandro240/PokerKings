@@ -2,6 +2,8 @@ import { Server } from 'socket.io';
 import { setupLobbySocket } from '../sockets/lobby.socket.js';
 import { setupTableSocket } from '../sockets/table.socket.js';
 
+let ioInstance = null;
+
 export const setupSocket = (server) => {
   const io = new Server(server, {
     cors: {
@@ -9,6 +11,8 @@ export const setupSocket = (server) => {
       methods: ['GET', 'POST']
     }
   });
+
+  ioInstance = io;
 
   io.on('connection', (socket) => {
     console.log('👤 User connected:', socket.id);
@@ -22,4 +26,12 @@ export const setupSocket = (server) => {
   });
 
   return io;
+};
+
+// Exportar instancia para usar en controladores
+export const getIO = () => {
+  if (!ioInstance) {
+    throw new Error('Socket.IO no está inicializado');
+  }
+  return ioInstance;
 };

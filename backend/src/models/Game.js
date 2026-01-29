@@ -14,7 +14,18 @@ const Game = sequelize.define('Game', {
   },
   winnerId: {
     type: DataTypes.UUID,
-    references: { model: 'users', key: 'id' }
+    references: { model: 'users', key: 'id' },
+    comment: 'Primary winner (for backward compatibility)'
+  },
+  winnerIds: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of all winner user IDs (for split pots)'
+  },
+  winners: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of {userId, username, chips, hand, description} for all winners'
   },
   pot: {
     type: DataTypes.BIGINT,
@@ -31,6 +42,40 @@ const Game = sequelize.define('Game', {
   status: {
     type: DataTypes.ENUM('active', 'finished'),
     defaultValue: 'active'
+  },
+  dealerId: {
+    type: DataTypes.UUID,
+    references: { model: 'users', key: 'id' },
+    comment: 'Dealer button (BTN)'
+  },
+  smallBlindId: {
+    type: DataTypes.UUID,
+    references: { model: 'users', key: 'id' },
+    comment: 'Small blind player'
+  },
+  bigBlindId: {
+    type: DataTypes.UUID,
+    references: { model: 'users', key: 'id' },
+    comment: 'Big blind player'
+  },
+  currentPlayerIndex: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Index of current player in players array'
+  },
+  players: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of {userId, chips, committed, hand} objects in order'
+  },
+  currentBet: {
+    type: DataTypes.BIGINT,
+    defaultValue: 0,
+    comment: 'Current bet amount to call'
+  },
+  deck: {
+    type: DataTypes.JSON,
+    comment: 'Remaining cards in deck'
   },
   startTime: {
     type: DataTypes.DATE,

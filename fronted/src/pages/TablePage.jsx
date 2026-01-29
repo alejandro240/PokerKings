@@ -34,6 +34,10 @@ function TablePage({ table, user, onNavigate }) {
         setLoading(true);
         setError(null);
 
+        // Unirse a la sala de WebSocket de la mesa
+        console.log(`🔌 Uniéndose a sala de WebSocket: table_${table.id}`);
+        gameSocket.emit('table:join', table.id);
+
         // Crear lista de jugadores para el backend
         const playerIds = [user.id]; // Comenzar con el usuario actual
         

@@ -3,12 +3,8 @@ import React, { useState } from 'react';
 function AmigosOffcanvas({ show, onHide }) {
   const [buscarAmigo, setBuscarAmigo] = useState('');
 
-  // Ejemplo de lista de amigos (después vendrán del backend)
-  const amigos = [
-    { id: 1, nombre: 'Carlos23', avatar: '👤', online: true },
-    { id: 2, nombre: 'Maria_Poker', avatar: '👤', online: false },
-    { id: 3, nombre: 'JuanKing', avatar: '👤', online: true },
-  ];
+  // Lista de amigos (vendrá del backend)
+  const amigos = [];
 
   const handleAgregarAmigo = () => {
     // Aquí después pondrás la lógica para enviar solicitud de amistad
@@ -55,23 +51,30 @@ function AmigosOffcanvas({ show, onHide }) {
 
         {/* Lista de amigos */}
         <h6>Mis amigos ({amigos.length})</h6>
-        <div className="list-group">
-          {amigos.map(amigo => (
-            <div 
-              key={amigo.id} 
-              className="list-group-item d-flex justify-content-between align-items-center"
-            >
-              <div>
-                <span className="me-2">{amigo.avatar}</span>
-                <strong>{amigo.nombre}</strong>
-                {amigo.online && <span className="badge bg-success ms-2">Online</span>}
+        {amigos.length === 0 ? (
+          <div className="text-center text-muted py-5">
+            <p>No tienes amigos aún</p>
+            <small>Agrega amigos para comenzar</small>
+          </div>
+        ) : (
+          <div className="list-group">
+            {amigos.map(amigo => (
+              <div 
+                key={amigo.id} 
+                className="list-group-item d-flex justify-content-between align-items-center"
+              >
+                <div>
+                  <span className="me-2">{amigo.avatar}</span>
+                  <strong>{amigo.nombre}</strong>
+                  {amigo.online && <span className="badge bg-success ms-2">Online</span>}
+                </div>
+                <button className="btn btn-sm btn-outline-primary">
+                  Ver perfil
+                </button>
               </div>
-              <button className="btn btn-sm btn-outline-primary">
-                Ver perfil
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,12 +1,8 @@
 import React from 'react';
 
 function TrofeosOffcanvas({ show, onHide }) {
-  // Ejemplo de trofeos (después vendrán del backend)
-  const trofeos = [
-    { id: 1, nombre: 'Primera Victoria', descripcion: 'Gana tu primera mano', desbloqueado: true },
-    { id: 2, nombre: 'Primera Escalera', descripcion: 'Consigue una escalera', desbloqueado: false },
-    { id: 3, nombre: 'Full House', descripcion: 'Consigue un full', desbloqueado: false },
-  ];
+  // Lista de trofeos (vendrá del backend)
+  const trofeos = [];
 
   return (
     <div 
@@ -23,18 +19,25 @@ function TrofeosOffcanvas({ show, onHide }) {
         ></button>
       </div>
       <div className="offcanvas-body">
-        <div className="list-group">
-          {trofeos.map(trofeo => (
-            <div 
-              key={trofeo.id} 
-              className={`list-group-item ${trofeo.desbloqueado ? 'list-group-item-success' : ''}`}
-            >
-              <h6>{trofeo.nombre}</h6>
-              <p className="mb-0 text-muted">{trofeo.descripcion}</p>
-              {trofeo.desbloqueado && <span className="badge bg-success">✓ Desbloqueado</span>}
-            </div>
-          ))}
-        </div>
+        {trofeos.length === 0 ? (
+          <div className="text-center text-muted py-5">
+            <p>No tienes trofeos aún</p>
+            <small>Juega para desbloquear trofeos</small>
+          </div>
+        ) : (
+          <div className="list-group">
+            {trofeos.map(trofeo => (
+              <div 
+                key={trofeo.id} 
+                className={`list-group-item ${trofeo.desbloqueado ? 'list-group-item-success' : ''}`}
+              >
+                <h6>{trofeo.nombre}</h6>
+                <p className="mb-0 text-muted">{trofeo.descripcion}</p>
+                {trofeo.desbloqueado && <span className="badge bg-success">✓ Desbloqueado</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

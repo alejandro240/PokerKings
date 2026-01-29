@@ -5,6 +5,13 @@ import {
   getFirstToActInPhase
 } from './game.phases.js';
 import { compareHands, getBestHand } from './hand.ranking.js';
+import {
+  calculateSidePots,
+  rebuildSidePots,
+  distributeSidePots,
+  getActivePlayersCount,
+  removeFoldedPlayerFromPots
+} from './sidepots.service.js';
 
 // Palos de cartas
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -216,11 +223,26 @@ const finishByFold = async (game) => {
   if (active.length !== 1) return null;
 
   const winner = active[0];
-  winner.chips += game.pot;
+  const winnerIndex = game.players.findIndex(p => p.userId === winner.userId);
+
+  // Build or rebuild side pots to determine pot distribution
+  const sidePots = game.sidePots || calculateSidePots(game.players);
+
+  // Find all pots the winner is eligible for
+  let winningsFromPots = 0;
+  for (const pot of sidePots) {
+    if (pot.eligiblePlayerIndices.includes(winnerIndex)) {
+      winningsFromPots += pot.amount;
+    }
+  }
+
+  // Add the winnings to winner's chips
+  winner.chips += winningsFromPots;
 
   game.status = 'finished';
   game.winnerId = winner.userId;
   game.pot = 0;
+  game.sidePots = sidePots;
   game.endTime = new Date();
   game.players = JSON.parse(JSON.stringify(game.players));
   game.changed('players', true);
@@ -237,52 +259,150 @@ const finishShowdown = async (game) => {
   const community = game.communityCards || [];
   const contenders = getActivePlayers(game.players);
 
+  console.log('[DEBUG][SHOWDOWN] Starting showdown...');
+  console.log('[DEBUG][SHOWDOWN] Community cards:', community.length, community);
+  console.log('[DEBUG][SHOWDOWN] Contenders:', contenders.length);
+  console.log('[DEBUG][SHOWDOWN] Pot before distribution:', game.pot);
+  console.log('[DEBUG][SHOWDOWN] Side pots:', game.sidePots);
+
   if (community.length < 5 || contenders.length === 0) {
+    console.log('[DEBUG][SHOWDOWN] ERROR: Not enough community cards (', community.length, ') or no contenders (', contenders.length, ')');
     return null;
   }
 
-  let winners = [];
-  let bestEval = null;
+  // Build side pots
+  const sidePots = game.sidePots || calculateSidePots(game.players);
+  console.log('[DEBUG][SHOWDOWN] Calculated side pots:', sidePots);
 
-  contenders.forEach((player) => {
+  // Evaluate hands for all contenders
+  const handEvals = contenders.map((player) => {
+    const playerIndex = game.players.findIndex(p => p.userId === player.userId);
     const bestHand = getBestHand(player.hand, community);
-    if (!bestEval) {
-      bestEval = bestHand;
-      winners = [player];
-      return;
-    }
-
-    const cmp = compareHands(bestHand, bestEval);
-    if (cmp === 1) {
-      bestEval = bestHand;
-      winners = [player];
-    } else if (cmp === 0) {
-      winners.push(player);
-    }
+    console.log('[DEBUG][SHOWDOWN] Player', playerIndex, 'hand:', player.hand, 'best:', bestHand);
+    return {
+      playerIndex,
+      player,
+      bestHand
+    };
   });
 
-  if (winners.length === 0) return null;
+  // Distribute each side pot to the best eligible hand
+  const distributedPlayers = JSON.parse(JSON.stringify(game.players));
+  const dealerIndex = game.players.findIndex(p => p.userId === game.dealerId);
+  const numPlayers = game.players.length;
+  
+  // Track all winners (for split pots)
+  const allWinners = new Set();
+  const winnerDetails = {};
 
-  const share = Math.floor(game.pot / winners.length);
-  winners.forEach((p) => {
-    p.chips += share;
-  });
+  for (const pot of sidePots) {
+    // Get eligible contenders for this pot
+    const potContenders = handEvals.filter(h =>
+      pot.eligiblePlayerIndices.includes(h.playerIndex)
+    );
 
-  const potRemainder = game.pot - share * winners.length;
-  if (potRemainder > 0) {
-    winners[0].chips += potRemainder;
+    if (potContenders.length === 0) continue;
+
+    // Find best hand(s) among eligible contenders
+    let potWinners = [potContenders[0]];
+    for (let i = 1; i < potContenders.length; i++) {
+      const cmp = compareHands(
+        potContenders[i].bestHand,
+        potWinners[0].bestHand
+      );
+      if (cmp === 1) {
+        potWinners = [potContenders[i]];
+      } else if (cmp === 0) {
+        potWinners.push(potContenders[i]);
+      }
+    }
+
+    // Log split pot winners
+    if (potWinners.length > 1) {
+      console.log(`[DEBUG][SPLIT_POT] Pot de ${pot.amount} fichas dividido entre ${potWinners.length} ganadores:`, 
+        potWinners.map((w, idx) => `${idx}: Player ${w.playerIndex} (${w.player.userId})`).join(', ')
+      );
+    }
+
+    // Distribute pot among winners
+    const share = Math.floor(pot.amount / potWinners.length);
+    const remainder = pot.amount - share * potWinners.length;
+
+    // Distribuir share equitativo a todos
+    potWinners.forEach((winner) => {
+      distributedPlayers[winner.playerIndex].chips += share;
+      allWinners.add(winner.player.userId);
+      
+      // Store winner details
+      if (!winnerDetails[winner.player.userId]) {
+        winnerDetails[winner.player.userId] = {
+          playerIndex: winner.playerIndex,
+          userId: winner.player.userId,
+          hand: winner.bestHand.hand.name,
+          description: winner.bestHand.hand.name,
+          chipsWon: share
+        };
+      } else {
+        winnerDetails[winner.player.userId].chipsWon += share;
+      }
+    });
+
+    // El chip impar va al jugador más cercano al dealer en sentido horario
+    if (remainder > 0) {
+      let closestToDealer = null;
+      let closestDistance = numPlayers;
+
+      for (const winner of potWinners) {
+        // Calcular distancia en sentido horario desde el dealer
+        let distance = (winner.playerIndex - dealerIndex + numPlayers) % numPlayers;
+        if (distance === 0 && potWinners.length > 1) {
+          distance = numPlayers;
+        }
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestToDealer = winner.playerIndex;
+        }
+      }
+
+      if (closestToDealer !== null) {
+        distributedPlayers[closestToDealer].chips += remainder;
+        winnerDetails[game.players[closestToDealer].userId].chipsWon += remainder;
+        console.log(`[DEBUG][CHIP_ODD] Chip impar (${remainder}) asignado a player ${closestToDealer} (distancia: ${closestDistance} desde dealer ${dealerIndex})`);
+      }
+    }
   }
 
+  // Get primary winner and all winners info
+  const primaryWinner = distributedPlayers.find(p => p.userId === contenders[0].userId);
+  const winners = Array.from(allWinners).map(userId => {
+    const user = game.players.find(p => p.userId === userId);
+    const details = winnerDetails[userId];
+    return {
+      userId,
+      username: user?.username || 'Unknown',
+      chips: distributedPlayers.find(p => p.userId === userId)?.chips || 0,
+      hand: details?.hand,
+      description: details?.description,
+      chipsWon: details?.chipsWon || 0
+    };
+  });
+
+  console.log('[DEBUG][WINNERS] All winners:', winners.map(w => `${w.username} (${w.chipsWon} chips)`).join(', '));
+
   game.status = 'finished';
-  game.winnerId = winners[0].userId;
+  game.phase = 'showdown';
+  game.winnerId = primaryWinner.userId;
+  game.winnerIds = Array.from(allWinners);
+  game.winners = winners;
   game.pot = 0;
+  game.sidePots = sidePots;
   game.endTime = new Date();
-  game.players = JSON.parse(JSON.stringify(game.players));
+  game.players = distributedPlayers;
   game.changed('players', true);
 
   await game.save();
 
-  return winners[0];
+  return primaryWinner;
 };
 
 /**
@@ -300,10 +420,13 @@ const advanceGamePhase = async (game) => {
   // Reset de apuestas para la nueva ronda (deep copy de players)
   game.currentBet = 0;
   const players = JSON.parse(JSON.stringify(game.players));
+  
+  // IMPORTANTE: Mantener committed para calcular side pots
+  // Solo resetear lastAction y betInPhase
   players.forEach((p) => {
-    p.committed = 0;
     p.lastAction = null;
     p.betInPhase = 0;
+    // NO resetear p.committed - lo necesitamos para side pots
   });
   game.players = players;
 
@@ -313,14 +436,19 @@ const advanceGamePhase = async (game) => {
   game.phase = nextPhase;
   game.currentPlayerIndex = firstToAct;
 
+  console.log('[DEBUG][ADVANCE_PHASE] Avanzando a', nextPhase, 'pot:', game.pot, 'committed:', players.map(p => p.committed));
+
   await game.update({
     phase: game.phase,
     communityCards: JSON.stringify(game.communityCards),
     deck: JSON.stringify(game.deck),
     players: game.players,
     currentBet: 0,
+    pot: game.pot,
     currentPlayerIndex: game.currentPlayerIndex
   });
+
+  return;
 
   return null;
 };
@@ -367,7 +495,10 @@ export const validateAction = (game, playerId, action, amount = 0) => {
       return true;
 
     case 'raise':
-      if (amount <= currentBet - playerCommitted) {
+      // Si el jugador está haciendo all-in (apostando todas sus fichas), es válido
+      const isAllIn = amount >= playerChips;
+      
+      if (!isAllIn && amount <= currentBet - playerCommitted) {
         throw new Error(`La subida mínima es ${currentBet - playerCommitted + currentBet}`);
       }
       const raiseTotal = playerCommitted + amount;
@@ -411,6 +542,11 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
   switch (action) {
     case 'fold':
       currentPlayer.folded = true;
+      // Rebuild side pots when a player folds
+      if (!game.sidePots) {
+        game.sidePots = calculateSidePots(game.players);
+      }
+      game.sidePots = removeFoldedPlayerFromPots(game.sidePots, currentPlayerIndex);
       break;
 
     case 'check':
@@ -427,11 +563,25 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
       break;
 
     case 'raise':
-      currentPlayer.chips -= amount;
-      currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + amount;
-      game.pot += amount;
-      game.currentBet = currentPlayer.committed;
-      totalBet = amount;
+      // Si el jugador está apostando todas sus fichas (all-in), manejarlo como tal
+      if (amount >= currentPlayer.chips) {
+        // Es un all-in disfrazado de raise
+        totalBet = currentPlayer.chips;
+        game.pot += currentPlayer.chips;
+        currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + currentPlayer.chips;
+        currentPlayer.chips = 0;
+        // Solo actualizar currentBet si la nueva apuesta es mayor
+        if (currentPlayer.committed > game.currentBet) {
+          game.currentBet = currentPlayer.committed;
+        }
+      } else {
+        // Raise normal
+        currentPlayer.chips -= amount;
+        currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + amount;
+        game.pot += amount;
+        game.currentBet = currentPlayer.committed;
+        totalBet = amount;
+      }
       break;
 
     case 'all-in':
@@ -442,6 +592,10 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
       if (currentPlayer.committed > game.currentBet) {
         game.currentBet = currentPlayer.committed;
       }
+      // Initialize side pots when a player goes all-in
+      if (!game.sidePots) {
+        game.sidePots = calculateSidePots(game.players);
+      }
       break;
   }
 
@@ -451,18 +605,41 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
   // Normalizar referencia explícitamente (algunas implementaciones de JSON pueden entregar copias)
   players[currentPlayerIndex] = { ...currentPlayer };
 
-  // Mover al siguiente jugador que no está folded
+  console.log('[DEBUG][NEXT_PLAYER] After action, looking for next player');
+  console.log('[DEBUG][NEXT_PLAYER] Current player index:', currentPlayerIndex);
+  console.log('[DEBUG][NEXT_PLAYER] Players state:', players.map((p, idx) => ({
+    index: idx,
+    userId: p.userId,
+    chips: p.chips,
+    folded: p.folded
+  })));
+
+  // Mover al siguiente jugador que no está folded NI all-in
   let nextIndex = (currentPlayerIndex + 1) % players.length;
   const startIndex = nextIndex;
 
-  while (players[nextIndex].folded) {
+  console.log('[DEBUG][NEXT_PLAYER] Starting nextIndex:', nextIndex, 'startIndex:', startIndex);
+
+  // Saltar jugadores folded o all-in (sin chips para actuar)
+  while (players[nextIndex].folded || players[nextIndex].chips === 0) {
+    console.log('[DEBUG][NEXT_PLAYER] Skipping player', nextIndex, '- folded:', players[nextIndex].folded, 'chips:', players[nextIndex].chips);
     nextIndex = (nextIndex + 1) % players.length;
     if (nextIndex === startIndex) {
-      // Todos excepto uno han hecho fold
-      const winner = await finishByFold(game);
-      return { gameOver: true, winner };
+      console.log('[DEBUG][NEXT_PLAYER] Full circle! nextIndex === startIndex');
+      // Todos excepto uno han hecho fold, o todos están all-in
+      const activePlayers = getActivePlayers(players);
+      if (activePlayers.length === 1) {
+        console.log('[DEBUG][NEXT_PLAYER] Only 1 active player, ending by fold');
+        const winner = await finishByFold(game);
+        return { gameOver: true, winner };
+      }
+      // Todos están all-in, avanzar a la siguiente fase automáticamente
+      console.log('[DEBUG][NEXT_PLAYER] All players all-in, breaking');
+      break;
     }
   }
+
+  console.log('[DEBUG][NEXT_PLAYER] Found next player:', nextIndex);
 
   // Verificar si la ronda de apuestas terminó
   const dealerIndex = players.findIndex(p => p.userId === game.dealerId);
@@ -494,11 +671,14 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
   // y volvimos al primer jugador de la fase, cerramos la ronda.
   if (!roundComplete) {
     const currentBetNum = parseInt(game.currentBet) || 0;
-    const allMatched = activePlayers.every(p => {
+    // Solo considerar jugadores que pueden actuar (tienen chips)
+    const playersWithChips = activePlayers.filter(p => p.chips > 0);
+    
+    const allMatched = playersWithChips.every(p => {
       const committed = parseInt(p.committed) || 0;
-      return committed >= currentBetNum || p.chips === 0;
+      return committed >= currentBetNum;
     });
-    const everyoneActed = activePlayers.every(p => p.lastAction);
+    const everyoneActed = playersWithChips.every(p => p.lastAction);
 
     if (everyoneActed && allMatched && nextIndex === firstToAct) {
       roundComplete = true;
@@ -511,6 +691,15 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
   }
 
   if (roundComplete) {
+    console.log('[DEBUG][ROUND_COMPLETE] Round marked as complete');
+    console.log('[DEBUG][ROUND_COMPLETE] Players:', players.map(p => ({
+      userId: p.userId,
+      chips: p.chips,
+      committed: p.committed,
+      lastAction: p.lastAction,
+      folded: p.folded
+    })));
+    
     // Deep copy limpio para guardar
     game.players = JSON.parse(JSON.stringify(players));
     game.changed('players', true);
@@ -518,18 +707,38 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
     // Guardar el estado actualizado antes de avanzar fase
     await game.save();
 
+    const activePlayers = players.filter(p => !p.folded);
+    const playersWithChips = activePlayers.filter(p => p.chips > 0);
+
+    console.log('[DEBUG][ROUND_COMPLETE] Active players:', activePlayers.length);
+    console.log('[DEBUG][ROUND_COMPLETE] Players with chips:', playersWithChips.length);
+
+    // Si solo queda 1 jugador con fichas y hay al menos 2 activos, saltar directo hasta showdown
+    if (playersWithChips.length <= 1 && activePlayers.length > 1) {
+      // IMPORTANTE: No hacer el showdown aquí dentro de processPlayerAction
+      // Solo retornar el estado actual con el pot actualizado.
+      // El cliente podrá consultar de nuevo o el showdown ocurrirá automáticamente en la siguiente consulta
+      return {
+        phaseAdvanced: true,
+        gameState: await getGameState(game.id, false)
+      };
+    }
+
+    // Flujo normal: avanzar solo una fase
     if (game.phase === 'river') {
       const winner = await finishShowdown(game);
       return { gameOver: true, winner };
     }
 
     await advanceGamePhase(game);
+    
     return {
       phaseAdvanced: true,
-      gameState: await getGameState(game.id)
+      gameState: await getGameState(game.id, false)
     };
   }
 
+  // Si no pasamos la ronda completa, simplemente mover al siguiente jugador
   game.currentPlayerIndex = nextIndex;
   game.players = JSON.parse(JSON.stringify(players));  // Deep copy limpio
   game.changed('players', true);
@@ -540,14 +749,15 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
     success: true, 
     action, 
     amount: totalBet,
-    nextPlayer: players[nextIndex]
+    nextPlayer: players[nextIndex],
+    gameState: await getGameState(game.id, false)
   };
 };
 
 /**
  * Obtener el estado actual del juego
  */
-export const getGameState = async (gameId) => {
+export const getGameState = async (gameId, autoShowdown = true) => {
   const game = await Game.findByPk(gameId, {
     include: [
       {
@@ -563,6 +773,24 @@ export const getGameState = async (gameId) => {
   });
 
   if (!game) throw new Error('Juego no encontrado');
+
+  // Si el juego está activo y todos excepto 1 jugador están all-in, hacer showdown automáticamente
+  // PERO solo si autoShowdown es true (no se ejecuta durante processPlayerAction)
+  if (autoShowdown && game.status === 'active') {
+    const activePlayers = game.players.filter(p => !p.folded);
+    const playersWithChips = activePlayers.filter(p => p.chips > 0);
+
+    if (playersWithChips.length <= 1 && activePlayers.length > 1 && game.phase !== 'showdown') {
+      // Avanzar automáticamente a river si no estamos allí
+      while (game.phase !== 'river') {
+        console.log('[DEBUG][GAMESTATE_AUTO] Avanzando de', game.phase);
+        await advanceGamePhase(game);
+      }
+      // Hacer showdown
+      console.log('[DEBUG][GAMESTATE_AUTO] Haciendo showdown');
+      await finishShowdown(game);
+    }
+  }
 
   // Parse JSON fields si son strings
   const communityCards = typeof game.communityCards === 'string' 
@@ -593,6 +821,8 @@ export const getGameState = async (gameId) => {
     smallBlindIndex: game.players.findIndex(p => p.userId === game.smallBlindId),
     bigBlindIndex: game.players.findIndex(p => p.userId === game.bigBlindId),
     winner: game.winner || null,
+    winners: game.winners || [],
+    winnerIds: game.winnerIds || [],
     startTime: game.startTime,
     endTime: game.endTime
   };

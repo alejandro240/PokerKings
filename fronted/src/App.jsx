@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Toaster } from 'react-hot-toast'
 import Navbar from './components/layout/Navbar'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
@@ -161,6 +162,35 @@ function App() {
   // Si hay usuario, mostrar la aplicación principal
   return (
     <div className="App">
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#1a1a2e',
+            color: '#daa520',
+            border: '2px solid #daa520',
+            borderRadius: '12px',
+            padding: '16px',
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)'
+          },
+          success: {
+            iconTheme: {
+              primary: '#0b6623',
+              secondary: '#daa520',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#c41e3a',
+              secondary: '#daa520',
+            },
+          },
+        }}
+      />
+      
       <Navbar user={user} onLogout={handleLogout} />
       
       {/* Renderizar vista actual */}

@@ -3,11 +3,9 @@
   width: 100%;
   max-width: 1200px;
   height: 700px;
-  margin: 2rem auto;
-  background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 100%);
-  border-radius: 20px;
+  margin: 0 auto;
+  background: transparent;
   padding: 2rem;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
 }
 
 .poker-table {

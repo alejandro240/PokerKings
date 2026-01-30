@@ -110,7 +110,6 @@ function TablePage({ table, user, onNavigate }) {
 
   // Manejar abandonar partida
   const handleLeaveTable = async () => {
-    const confirm = window.confirm('¿Estás seguro de que quieres abandonar la partida?');
     toast.dismiss('leave-confirm');
     
     toast((t) => (

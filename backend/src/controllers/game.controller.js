@@ -68,10 +68,11 @@ export const startGame = async (req, res) => {
     if (botsToAdd > 0) {
       console.log(`⚠️  Agregando ${botsToAdd} bots según configuración de la mesa...`);
       
-      // Buscar otros usuarios disponibles para simular jugadores (bots)
+      // Buscar usuarios bot disponibles
       const availablePlayers = await User.findAll({
         where: { 
-          id: { [Op.notIn]: playerIds }
+          id: { [Op.notIn]: playerIds },
+          isBot: true  // Solo bots reales
         },
         limit: botsToAdd,
         order: [['createdAt', 'ASC']]

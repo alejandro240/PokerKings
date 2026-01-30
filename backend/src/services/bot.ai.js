@@ -87,19 +87,25 @@ export const makeBotDecision = (gameState, botPlayerIndex, currentBet) => {
         return { action: 'call', amount: currentBet };
       }
     } else if (handStrength === 'medium') {
-      // Con mano mediocre, call o fold
-      if (canCall && randomFactor < 0.6) {
+      // Con mano mediocre, casi siempre call
+      if (canCall && randomFactor < 0.85) {
         return { action: 'call', amount: currentBet };
       }
-      return { action: 'fold', amount: 0 };
-    } else {
-      // Mano débil, fold generalmente
-      if (randomFactor < 0.9) {
+      // Ocasionalmente fold
+      if (randomFactor < 0.3) {
         return { action: 'fold', amount: 0 };
       }
       if (canCall) {
         return { action: 'call', amount: currentBet };
       }
+    } else {
+      // Mano débil, pero aun así sometimes call para mantener el juego interesante
+      if (randomFactor < 0.6) {
+        if (canCall) {
+          return { action: 'call', amount: currentBet };
+        }
+      }
+      return { action: 'fold', amount: 0 };
     }
   }
 

@@ -3,8 +3,9 @@
  * Implementa estrategia básica de poker para jugadores bot
  */
 
-import { Game, User } from '../models/index.js';
-import { processPlayerAction } from './game.service.js';
+import { Game, User, Table } from '../models/index.js';
+import { processPlayerAction, getGameState } from './game.service.js';
+import { getIO } from '../config/socket.js';
 
 /**
  * Evaluar la fuerza de la mano del jugador
@@ -143,27 +144,36 @@ export const makeBotDecision = (gameState, botPlayerIndex, currentBet) => {
  * Ejecutar turno automático del bot
  */
 export const executeBotTurn = async (gameId) => {
+  console.log(`🤖 [executeBotTurn] Iniciando para gameId: ${gameId}`);
   try {
     const game = await Game.findByPk(gameId);
     
-    if (!game || game.status !== 'active') {
-      console.log('❌ Juego no está activo o no existe');
+    if (!game) {
+      console.log('❌ [BOT] Juego no existe');
+      return null;
+    }
+
+    if (game.status !== 'active') {
+      console.log(`❌ [BOT] Juego no está activo. Status: ${game.status}`);
       return null;
     }
 
     const currentPlayerIndex = game.currentPlayerIndex;
+    console.log(`🤖 [BOT] Índice del jugador actual: ${currentPlayerIndex}`);
+    
     const currentPlayer = game.players[currentPlayerIndex];
 
     if (!currentPlayer) {
-      console.log('❌ No hay jugador actual');
+      console.log('❌ [BOT] No hay jugador actual');
       return null;
     }
 
     // Obtener el usuario para verificar si es bot
     const user = await User.findByPk(currentPlayer.userId);
+    console.log(`🤖 [BOT] Usuario actual: ${user?.username}, isBot: ${user?.isBot}`);
 
     if (!user || !user.isBot) {
-      console.log('⏸️  El jugador actual no es un bot, esperando entrada del usuario');
+      console.log(`⏸️  [BOT] El jugador actual ${user?.username} no es un bot, esperando entrada del usuario`);
       return null;
     }
 
@@ -175,9 +185,10 @@ export const executeBotTurn = async (gameId) => {
 
     const decision = makeBotDecision(gameState, currentPlayerIndex, game.currentBet);
     
-    console.log(`🤖 Bot ${user.username} tomó decisión:`, decision);
+    console.log(`🤖 [BOT] ${user.username} tomó decisión:`, decision);
 
     // Ejecutar la acción en el juego
+    console.log(`🤖 [BOT] Ejecutando acción: ${decision.action} con amount: ${decision.amount}`);
     const result = await processPlayerAction(
       game,
       currentPlayer.userId,
@@ -186,12 +197,23 @@ export const executeBotTurn = async (gameId) => {
     );
 
     if (!result || !result.success) {
-      console.error('❌ Error al procesar acción del bot:', result);
+      console.error('❌ [BOT] Error al procesar acción del bot:', result);
       return null;
     }
 
+    console.log(`✅ [BOT] Acción ejecutada correctamente: ${decision.action}`);
+
     // Obtener el juego actualizado
     const updatedGame = await Game.findByPk(gameId);
+
+    // Emitir actualización a todos los jugadores
+    const table = await Table.findByPk(updatedGame.tableId);
+    if (table) {
+      const updatedGameState = await getGameState(gameId, false);
+      const io = getIO();
+      io.to(`table_${table.id}`).emit('gameStateUpdated', updatedGameState);
+      console.log(`📢 [BOT] Emitiendo gameStateUpdated a sala table_${table.id}`);
+    }
 
     // Si el siguiente jugador también es bot, ejecutar automáticamente
     const nextPlayer = updatedGame.players[updatedGame.currentPlayerIndex];

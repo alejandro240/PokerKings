@@ -458,3 +458,27 @@
   }
 }
 
+/* Indicador de última acción */
+.last-action-badge {
+  background: linear-gradient(135deg, #ff6b6b, #ff8787);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 4px;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+  animation: pulse-action 1s ease-in-out infinite;
+}
+
+@keyframes pulse-action {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}

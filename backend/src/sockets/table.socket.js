@@ -3,9 +3,11 @@ import pokerEngine from '../services/pokerEngine.js';
 
 export const setupTableSocket = (io, socket) => {
   socket.on('table:join', async (tableId) => {
+    console.log(`🔌 Socket ${socket.id} uniéndose a sala table_${tableId}`);
     socket.join(`table_${tableId}`);
     const table = await Table.findByPk(tableId);
     socket.emit('table:state', table);
+    console.log(`✅ Socket ${socket.id} unido a sala table_${tableId}`);
   });
 
   socket.on('table:leave', (tableId) => {

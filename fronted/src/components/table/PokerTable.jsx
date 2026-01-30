@@ -11,7 +11,9 @@ function PokerTable({
   communityCards = [],
   gamePhase = 'waiting',
   pot = 0,
-  sidePots = []
+  sidePots = [],
+  currentUserIndex = null, // Índice del usuario actual
+  currentPlayerIndex = null // Índice del jugador en turno
 }) {
   // Formatear carta para mostrar (e.g., "AS" → "A♠", "KH" → "K♥")
   const formatCard = (card) => {
@@ -89,6 +91,36 @@ function PokerTable({
 
   const positions = seatPositions[maxPlayers] || seatPositions[6];
 
+  // Reordenar jugadores para que el usuario actual siempre esté en la posición inferior (center-bottom)
+  const centerBottomIndex = maxPlayers === 6 ? 3 : (maxPlayers === 4 ? 2 : maxPlayers - 1);
+  let displayedPlayers = [];
+  let playerIndexMap = {};
+
+  // Construir array de posiciones con rotación para poner al usuario en la posición inferior
+  if (currentUserIndex !== null && currentUserIndex !== undefined && players.length > 0 && currentUserIndex >= 0) {
+    // Calcular offset: cuántas posiciones rotar hacia la derecha para que el usuario esté en centerBottomIndex
+    const offset = (centerBottomIndex - currentUserIndex + players.length) % players.length;
+    
+    // Llenar el array de posiciones con jugadores rotados
+    for (let i = 0; i < maxPlayers; i++) {
+      if (i < players.length) {
+        // Calcular el índice original del jugador que debería estar en esta posición
+        const originalIndex = (currentUserIndex + i - offset + players.length) % players.length;
+        displayedPlayers[i] = players[originalIndex];
+        playerIndexMap[i] = originalIndex;
+      } else {
+        displayedPlayers[i] = null;
+        playerIndexMap[i] = null;
+      }
+    }
+  } else {
+    // Si no hay usuario actual, mostrar jugadores en orden
+    displayedPlayers = [...players];
+    for (let i = 0; i < maxPlayers; i++) {
+      playerIndexMap[i] = i < players.length ? i : null;
+    }
+  }
+
   return (
     <div className="poker-table-container">
       {/* Mesa de poker */}
@@ -153,25 +185,33 @@ function PokerTable({
 
       {/* Asientos de jugadores */}
       {Array.from({ length: maxPlayers }).map((_, index) => {
-        const player = players[index];
+        const player = displayedPlayers[index];
         const position = positions[index];
+        
+        // Obtener el índice original del jugador para las posiciones de dealer/blind
+        const originalIndex = playerIndexMap[index] !== undefined ? playerIndexMap[index] : index;
 
         return (
           <div 
             key={index}
-            className={`player-seat ${player ? 'occupied' : 'empty'}`}
+            className={`player-seat ${player ? 'occupied' : 'empty'} ${originalIndex === currentPlayerIndex ? 'current-turn' : ''}`}
             style={position}
           >
             {player ? (
               <div className="player-info">
+                {/* Indicator for current turn */}
+                {originalIndex === currentPlayerIndex && (
+                  <div className="turn-indicator">🎯 TU TURNO</div>
+                )}
+
                 {/* Position Indicators */}
-                {dealerPosition === index && (
+                {dealerPosition === originalIndex && (
                   <div className="position-badge dealer-badge">D</div>
                 )}
-                {smallBlindPosition === index && (
+                {smallBlindPosition === originalIndex && (
                   <div className="position-badge sb-badge">SB</div>
                 )}
-                {bigBlindPosition === index && (
+                {bigBlindPosition === originalIndex && (
                   <div className="position-badge bb-badge">BB</div>
                 )}
                 

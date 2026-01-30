@@ -41,9 +41,11 @@ const usePokerGame = () => {
 
     // Actualizar estado del juego desde backend
     gameSocket.on('gameStateUpdated', (gameState) => {
+      console.log('🎮 gameStateUpdated recibido:', gameState);
+      
       if (gameState) {
         setGameId(gameState.id);
-        setGamePhase(gameState.status || 'waiting');
+        setGamePhase(gameState.phase || gameState.status || 'waiting');
         setPot(gameState.pot || 0);
         setSidePots(gameState.sidePots || []);
         setCommunityCards(gameState.communityCards || []);
@@ -51,13 +53,16 @@ const usePokerGame = () => {
         setMinRaise(gameState.minRaise || 0);
         setDealerPosition(gameState.dealerIndex || 0);
         
+        let currentIdx = -1;
+        
         // Actualizar estado del jugador actual
         if (gameState.players && gameState.players.length > 0) {
+          console.log('👥 Actualizando jugadores:', gameState.players.length, gameState.players);
           setPlayers(gameState.players);
           
           // Encontrar al jugador actual
           const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-          const currentIdx = gameState.players.findIndex(p => p.userId === currentUser.id);
+          currentIdx = gameState.players.findIndex(p => p.userId === currentUser.id);
           if (currentIdx !== -1) {
             setPlayerIndex(currentIdx);
             const currentPlayer = gameState.players[currentIdx];
@@ -70,8 +75,12 @@ const usePokerGame = () => {
         
         // Actualizar turno actual
         if (gameState.currentPlayerIndex !== undefined) {
+          console.log('🎯 Turno actual:', gameState.currentPlayerIndex);
           setCurrentPlayerTurn(gameState.currentPlayerIndex);
         }
+        
+        console.log('🔍 Debug - playerIndex:', currentIdx, 'currentPlayerTurn:', gameState.currentPlayerIndex);
+        console.log('🔍 Es mi turno?:', currentIdx === gameState.currentPlayerIndex);
         
         // Guardar múltiples ganadores si están disponibles
         if (gameState.winners) {
@@ -113,53 +122,80 @@ const usePokerGame = () => {
     };
   }, []);
 
-  // Actions que envían al backend
+  // Actions que envían al backend vía REST API
+  const sendAction = useCallback(async (action, amount = 0) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('token');
+    
+    try {
+      const response = await fetch(`http://localhost:3000/api/games/${gameId}/action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          action,
+          amount
+        })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        console.error('❌ Error en acción:', data.error);
+      } else {
+        console.log('✅ Acción procesada:', action);
+      }
+      return data;
+    } catch (error) {
+      console.error('❌ Error enviando acción:', error);
+    }
+  }, [gameId]);
+
   const handleFold = useCallback(() => {
-    if (gameId && playerIndex !== undefined) {
-      gameSocket.playerAction(gameId, playerIndex, 'fold');
+    if (gameId) {
+      console.log('📤 Enviando acción FOLD');
+      sendAction('fold');
       setPlayerHasFolded(true);
       setPlayerHasActed(true);
     }
-  }, [gameId, playerIndex]);
+  }, [gameId, sendAction]);
 
   const handleCheck = useCallback(() => {
-    if (gameId && playerIndex !== undefined) {
-      gameSocket.playerAction(gameId, playerIndex, 'check');
+    if (gameId) {
+      console.log('📤 Enviando acción CHECK');
+      sendAction('check');
       setPlayerHasActed(true);
     }
-  }, [gameId, playerIndex]);
+  }, [gameId, sendAction]);
 
   const handleCall = useCallback(() => {
-    if (gameId && playerIndex !== undefined) {
+    if (gameId) {
       const callAmount = currentBet - playerBet;
-      gameSocket.playerAction(gameId, playerIndex, 'call', callAmount);
-      setPlayerBet(currentBet);
-      setPlayerChips(prev => prev - callAmount);
+      console.log('📤 Enviando acción CALL', callAmount);
+      sendAction('call', callAmount);
       setPlayerHasActed(true);
     }
-  }, [gameId, playerIndex, currentBet, playerBet]);
+  }, [gameId, sendAction, currentBet, playerBet]);
 
   const handleRaise = useCallback((raiseAmount) => {
-    if (gameId && playerIndex !== undefined) {
+    if (gameId) {
       const totalBet = currentBet + raiseAmount;
-      gameSocket.playerAction(gameId, playerIndex, 'raise', totalBet);
-      setPlayerBet(totalBet);
-      setPlayerChips(prev => prev - (totalBet - playerBet));
-      setCurrentBet(totalBet);
-      setMinRaise(raiseAmount);
+      console.log('📤 Enviando acción RAISE', totalBet);
+      sendAction('raise', totalBet);
       setPlayerHasActed(true);
     }
-  }, [gameId, playerIndex, currentBet, playerBet]);
+  }, [gameId, sendAction, currentBet]);
 
   const handleAllIn = useCallback(() => {
-    if (gameId && playerIndex !== undefined) {
+    if (gameId) {
       const allInAmount = playerChips;
-      gameSocket.playerAction(gameId, playerIndex, 'allIn', allInAmount);
-      setPlayerBet(playerBet + allInAmount);
-      setPlayerChips(0);
+      console.log('📤 Enviando acción ALL-IN', allInAmount);
+      sendAction('all-in', allInAmount);
       setPlayerHasActed(true);
     }
-  }, [gameId, playerIndex, playerChips, playerBet]);
+  }, [gameId, sendAction, playerChips]);
 
   // Game phase progression (backend controls)
   const advanceGamePhase = useCallback(() => {
@@ -217,6 +253,8 @@ const usePokerGame = () => {
     playerHasFolded,
     playerHasActed,
     players,
+    playerIndex,
+    currentPlayerTurn,
     
     // Winners (múltiples ganadores)
     winners,

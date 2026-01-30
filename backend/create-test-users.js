@@ -57,46 +57,38 @@ const createTestUsers = async () => {
         highestWinning: 1000,
         totalWinnings: 5000,
         gamesPlayed: 25,
-        gamesWon: 8
-      });
+      gamesWon: 8,
+      isBot: false
+    });
 
-      const user2 = await User.create({
-        username: 'jugador2',
-        email: 'jugador2@pokerkings.com',
-        password: hashedPassword,
-        chips: 3000,
-        level: 3,
-        experience: 1200,
-        avatar: '🎲',
-        highestWinning: 500,
-        totalWinnings: 2000,
-        gamesPlayed: 15,
-        gamesWon: 4
-      });
+    const user2 = await User.create({
+      username: 'jugador2',
+      email: 'jugador2@pokerkings.com',
+      password: hashedPassword,
+      chips: 3000,
+      level: 3,
+      experience: 1200,
+      avatar: '🎲',
+      highestWinning: 500,
+      totalWinnings: 2000,
+      gamesPlayed: 15,
+      gamesWon: 4,
+      isBot: false
+    });
 
-      const user3 = await User.create({
-        username: 'jugador3',
-        email: 'jugador3@pokerkings.com',
-        password: hashedPassword,
-        chips: 10000,
-        level: 10,
-        experience: 5000,
-        avatar: '👑',
-        highestWinning: 3000,
-        totalWinnings: 15000,
-        gamesPlayed: 60,
-        gamesWon: 25
-      });
-
-      console.log('✅ Usuarios creados exitosamente\n');
-      
-      console.log('📝 CREDENCIALES DE PRUEBA:');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('\n👤 Usuario 1:');
-      console.log('  📧 Email:    jugador1@pokerkings.com');
-      console.log('  🔑 Password: password123');
-      console.log('  💰 Chips:    5000');
-      console.log('  🏆 Level:    5');
+    const user3 = await User.create({
+      username: 'jugador3',
+      email: 'jugador3@pokerkings.com',
+      password: hashedPassword,
+      chips: 10000,
+      level: 10,
+      experience: 5000,
+      avatar: '👑',
+      highestWinning: 3000,
+      totalWinnings: 15000,
+      gamesPlayed: 60,
+      gamesWon: 25,
+      isBot: false
       
       console.log('\n👤 Usuario 2:');
       console.log('  📧 Email:    jugador2@pokerkings.com');
@@ -113,44 +105,9 @@ const createTestUsers = async () => {
       console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 
-    // Crear mesas de prueba si no existen
-    const existingTable = await Table.findOne({ where: { name: 'Mesa Principiantes' } });
-    
-    if (!existingTable) {
-      console.log('\n🎰 Creando mesas de prueba...');
-      
-      await Table.create({
-        name: 'Mesa Principiantes',
-        smallBlind: 10,
-        bigBlind: 20,
-        maxPlayers: 6,
-        isPrivate: false,
-        tableColor: '#1a4d2e',
-        status: 'waiting'
-      });
-
-      await Table.create({
-        name: 'Mesa Intermedia',
-        smallBlind: 50,
-        bigBlind: 100,
-        maxPlayers: 6,
-        isPrivate: false,
-        tableColor: '#2d5a3d',
-        status: 'waiting'
-      });
-
-      await Table.create({
-        name: 'Mesa VIP',
-        smallBlind: 100,
-        bigBlind: 200,
-        maxPlayers: 8,
-        isPrivate: true,
-        tableColor: '#3d7a4d',
-        status: 'waiting'
-      });
-
-      console.log('✅ Mesas creadas exitosamente');
-    }
+    // NO crear mesas de prueba automáticamente
+    // Las mesas serán creadas por los usuarios según necesiten
+    console.log('\n📝 NOTA: Las mesas se crean desde la interfaz al hacer click en "Crear Mesa"');
 
     console.log('\n✨ Base de datos lista para usar');
     console.log('\n🚀 Próximo paso:');

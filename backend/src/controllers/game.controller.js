@@ -35,13 +35,31 @@ export const startGame = async (req, res) => {
     });
 
     if (activeGame) {
-      console.log('ℹ️  Ya hay un juego activo, devolviendo ese juego');
-      // Si ya hay un juego activo, devolver ese juego en lugar de crear uno nuevo
-      return res.status(200).json({
-        success: true,
-        message: 'Unido a juego existente',
-        game: await getGameState(activeGame.id)
-      });
+      console.log('ℹ️  Ya hay un juego activo en la mesa');
+      
+      // Parsear players si es string
+      const gamePlayers = typeof activeGame.players === 'string' 
+        ? JSON.parse(activeGame.players || '[]')
+        : (activeGame.players || []);
+      
+      // Verificar si el usuario ya está en el juego
+      const userAlreadyInGame = gamePlayers.some(p => playerIds.includes(p.userId));
+      
+      if (userAlreadyInGame) {
+        console.log('✅ Usuario ya está en el juego, devolviendo estado actual');
+        return res.status(200).json({
+          success: true,
+          message: 'Ya estás en este juego',
+          game: await getGameState(activeGame.id)
+        });
+      } else {
+        // El usuario no está en el juego, pero el juego ya está activo
+        // No permitir que se una un nuevo usuario a un juego ya iniciado
+        console.log('⚠️  El juego ya está activo y no puedes unirte a mitad de juego');
+        return res.status(400).json({
+          error: 'El juego ya está en progreso. Espera a que termine para unirte.'
+        });
+      }
     }
 
     // Agregar bots según la configuración de la mesa
@@ -166,6 +184,15 @@ export const playerAction = async (req, res) => {
 
     // Procesar la acción
     const result = await processPlayerAction(game, userId, action, amount || 0);
+
+    // Emitir actualización del juego a todos los jugadores en la sala
+    const io = getIO();
+    const table = await Table.findByPk(game.tableId);
+    if (table) {
+      const updatedGameState = await getGameState(gameId, false);
+      io.to(`table_${table.id}`).emit('gameStateUpdated', updatedGameState);
+      console.log(`📢 Emitiendo gameStateUpdated a sala table_${table.id}`);
+    }
 
     if (result.gameOver) {
       return res.json({

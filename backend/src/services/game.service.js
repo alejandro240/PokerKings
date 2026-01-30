@@ -12,6 +12,7 @@ import {
   getActivePlayersCount,
   removeFoldedPlayerFromPots
 } from './sidepots.service.js';
+import { executeBotTurn } from './bot.ai.js';
 
 // Palos de cartas
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -706,6 +707,7 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
     
     // Guardar el estado actualizado antes de avanzar fase
     await game.save();
+    console.log(`[DEBUG][SAVE] Game ${game.id} saved with ${game.players?.length || 0} players`);
 
     const activePlayers = players.filter(p => !p.folded);
     const playersWithChips = activePlayers.filter(p => p.chips > 0);
@@ -732,10 +734,35 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
 
     await advanceGamePhase(game);
     
-    return {
+    const result = {
       phaseAdvanced: true,
       gameState: await getGameState(game.id, false)
     };
+
+    // Check if next player is a bot after phase advance
+    try {
+      const nextPlayerIndex = game.currentPlayerIndex;
+      const nextPlayer = game.players[nextPlayerIndex];
+      if (nextPlayer) {
+        const nextUser = await User.findByPk(nextPlayer.userId);
+        
+        if (nextUser?.isBot && game.status === 'active') {
+          console.log(`[BOT] Auto-executing turn for bot: ${nextUser.username} (after phase advance)`);
+          // Execute bot turn with 1 second delay
+          setTimeout(async () => {
+            try {
+              await executeBotTurn(game.id);
+            } catch (botError) {
+              console.error('[BOT] Error executing bot turn:', botError.message);
+            }
+          }, 1000);
+        }
+      }
+    } catch (botCheckError) {
+      console.error('[BOT] Error checking if next player is bot:', botCheckError.message);
+    }
+
+    return result;
   }
 
   // Si no pasamos la ronda completa, simplemente mover al siguiente jugador
@@ -745,13 +772,35 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
   
   await game.save();
 
-  return { 
+  const result = { 
     success: true, 
     action, 
     amount: totalBet,
     nextPlayer: players[nextIndex],
     gameState: await getGameState(game.id, false)
   };
+
+  // Check if next player is a bot and execute automatically
+  try {
+    const nextPlayer = players[nextIndex];
+    const nextUser = await User.findByPk(nextPlayer.userId);
+    
+    if (nextUser?.isBot && game.status === 'active') {
+      console.log(`[BOT] Auto-executing turn for bot: ${nextUser.username}`);
+      // Execute bot turn with 1 second delay
+      setTimeout(async () => {
+        try {
+          await executeBotTurn(game.id);
+        } catch (botError) {
+          console.error('[BOT] Error executing bot turn:', botError.message);
+        }
+      }, 1000);
+    }
+  } catch (botCheckError) {
+    console.error('[BOT] Error checking if next player is bot:', botCheckError.message);
+  }
+
+  return result;
 };
 
 /**
@@ -773,6 +822,13 @@ export const getGameState = async (gameId, autoShowdown = true) => {
   });
 
   if (!game) throw new Error('Juego no encontrado');
+
+  console.log(`[DEBUG][getGameState] Game ${gameId}:`, {
+    players_count: game.players?.length || 0,
+    players_raw: game.players,
+    status: game.status,
+    phase: game.phase
+  });
 
   // Si el juego está activo y todos excepto 1 jugador están all-in, hacer showdown automáticamente
   // PERO solo si autoShowdown es true (no se ejecuta durante processPlayerAction)
@@ -797,6 +853,19 @@ export const getGameState = async (gameId, autoShowdown = true) => {
     ? JSON.parse(game.communityCards || '[]')
     : (game.communityCards || []);
 
+  // Obtener información completa de los jugadores desde la base de datos
+  const playerUserIds = game.players.map(p => p.userId);
+  const users = await User.findAll({
+    where: { id: playerUserIds },
+    attributes: ['id', 'username', 'avatar', 'chips']
+  });
+
+  // Crear un mapa de usuarios por ID para búsqueda rápida
+  const usersMap = {};
+  users.forEach(u => {
+    usersMap[u.id] = u;
+  });
+
   return {
     id: game.id,
     tableId: game.tableId,
@@ -807,16 +876,22 @@ export const getGameState = async (gameId, autoShowdown = true) => {
     communityCards: communityCards,
     currentBet: parseInt(game.currentBet) || 0,
     currentPlayerIndex: game.currentPlayerIndex,
-    players: game.players.map((p, idx) => ({
-      userId: p.userId,
-      chips: p.chips,
-      committed: parseInt(p.committed) || 0,
-      folded: p.folded,
-      lastAction: p.lastAction || null,
-      betInPhase: p.betInPhase || 0,
-      isCurrentPlayer: idx === game.currentPlayerIndex,
-      cardsHidden: true // Las cartas se ven según permisos
-    })),
+    players: game.players.map((p, idx) => {
+      const user = usersMap[p.userId];
+      return {
+        userId: p.userId,
+        username: user?.username || 'Unknown',
+        avatar: user?.avatar || '🎮',
+        chips: p.chips,
+        committed: parseInt(p.committed) || 0,
+        folded: p.folded,
+        lastAction: p.lastAction || null,
+        betInPhase: p.betInPhase || 0,
+        isCurrentPlayer: idx === game.currentPlayerIndex,
+        holeCards: p.holeCards || [],
+        cardsHidden: true // Las cartas se ven según permisos
+      };
+    }),
     dealerIndex: game.players.findIndex(p => p.userId === game.dealerId),
     smallBlindIndex: game.players.findIndex(p => p.userId === game.smallBlindId),
     bigBlindIndex: game.players.findIndex(p => p.userId === game.bigBlindId),

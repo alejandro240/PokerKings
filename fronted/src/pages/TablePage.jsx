@@ -37,7 +37,7 @@ function TablePage({ table, user, onNavigate }) {
 
         // Unirse a la sala de WebSocket de la mesa
         console.log(`🔌 Uniéndose a sala de WebSocket: table_${table.id}`);
-        gameSocket.emit('table:join', table.id);
+        gameSocket.joinTable(table.id);
 
         // Crear lista de jugadores para el backend
         const playerIds = [user.id]; // Comenzar con el usuario actual
@@ -271,27 +271,38 @@ function TablePage({ table, user, onNavigate }) {
         gamePhase={pokerGame.gamePhase}
         pot={pokerGame.pot}
         sidePots={pokerGame.sidePots}
+        currentUserIndex={players.findIndex(p => p?.userId === user?.id)}
+        currentPlayerIndex={pokerGame.currentPlayerTurn}
       />
 
       {/* Acciones de apuestas */}
-      {!isSpectator && pokerGame.gamePhase !== 'waiting' && (
-        <BettingActions 
-          playerChips={pokerGame.playerChips}
-          currentBet={pokerGame.currentBet}
-          minRaise={pokerGame.minRaise}
-          pot={pokerGame.pot}
-          isPlayerTurn={pokerGame.currentPlayerTurn === 0} // Asumiendo que el jugador es índice 0
-          canCheck={pokerGame.canCheck}
-          canCall={pokerGame.canCall}
-          canRaise={pokerGame.canRaise}
-          canFold={pokerGame.canFold}
-          onFold={pokerGame.handleFold}
-          onCheck={pokerGame.handleCheck}
-          onCall={pokerGame.handleCall}
-          onRaise={pokerGame.handleRaise}
-          onAllIn={pokerGame.handleAllIn}
-        />
-      )}
+      {!isSpectator && pokerGame.gamePhase !== 'waiting' && (() => {
+        const isMyTurn = pokerGame.currentPlayerTurn === pokerGame.playerIndex;
+        console.log('🎮 BettingActions:', {
+          currentPlayerTurn: pokerGame.currentPlayerTurn,
+          playerIndex: pokerGame.playerIndex,
+          isMyTurn,
+          gamePhase: pokerGame.gamePhase
+        });
+        return (
+          <BettingActions 
+            playerChips={pokerGame.playerChips}
+            currentBet={pokerGame.currentBet}
+            minRaise={pokerGame.minRaise}
+            pot={pokerGame.pot}
+            isPlayerTurn={isMyTurn}
+            canCheck={pokerGame.canCheck}
+            canCall={pokerGame.canCall}
+            canRaise={pokerGame.canRaise}
+            canFold={pokerGame.canFold}
+            onFold={pokerGame.handleFold}
+            onCheck={pokerGame.handleCheck}
+            onCall={pokerGame.handleCall}
+            onRaise={pokerGame.handleRaise}
+            onAllIn={pokerGame.handleAllIn}
+          />
+        );
+      })()}
 
       {/* Panel de acciones */}
       <div className="actions-panel">

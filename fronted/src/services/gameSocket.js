@@ -39,10 +39,17 @@ class GameSocketService {
 
       // Eventos del juego
       this.socket.on('gameStarted', (gameData) => {
+        console.log('🎮 gameStarted recibido:', gameData);
         this.emit('gameStarted', gameData);
       });
 
       this.socket.on('gameState', (gameState) => {
+        console.log('🎮 gameState recibido:', gameState);
+        this.emit('gameStateUpdated', gameState);
+      });
+
+      this.socket.on('gameStateUpdated', (gameState) => {
+        console.log('🎮 gameStateUpdated recibido directo:', gameState);
         this.emit('gameStateUpdated', gameState);
       });
 
@@ -84,6 +91,16 @@ class GameSocketService {
     this.gameId = gameId;
     if (this.socket) {
       this.socket.emit('joinGame', { gameId, userId });
+    }
+  }
+
+  // Unirse a la sala de una mesa
+  joinTable(tableId) {
+    if (this.socket) {
+      console.log(`📤 Emitiendo table:join para ${tableId}`);
+      this.socket.emit('table:join', tableId);
+    } else {
+      console.error('❌ Socket no conectado, no se puede unir a la mesa');
     }
   }
 

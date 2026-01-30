@@ -36,17 +36,6 @@ function HomePage({ onNavigate }) {
           </div>
         </div>
 
-        {/* Información adicional */}
-        <div className="home-info">
-          <div className="info-card">
-            <div className="info-icon">👥</div>
-            <div className="info-text">Multijugador</div>
-          </div>
-          <div className="info-card">
-            <div className="info-icon"></div>
-            <div className="info-text">Recompensas</div>
-          </div>
-        </div>
       </div>
     </div>
   );

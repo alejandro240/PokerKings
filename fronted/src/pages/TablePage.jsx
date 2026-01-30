@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import PokerTable from '../components/table/PokerTable';
 import BettingActions from '../components/table/BettingActions';
 import CommunityCards from '../components/table/CommunityCards';
@@ -110,17 +111,47 @@ function TablePage({ table, user, onNavigate }) {
   // Manejar abandonar partida
   const handleLeaveTable = async () => {
     const confirm = window.confirm('¿Estás seguro de que quieres abandonar la partida?');
-    if (confirm) {
-      try {
-        if (pokerGame.gameId) {
-          await gameAPI.leaveGame(pokerGame.gameId);
-        }
-        console.log('🚻 Usuario abandonó la mesa');
-        onNavigate('home');
-      } catch (err) {
-        console.error('Error al abandonar:', err);
-      }
-    }
+    toast.dismiss('leave-confirm');
+    
+    toast((t) => (
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ marginBottom: '1rem' }}>¿Abandonar la partida?</p>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              toast.success('Has abandonado la mesa', { id: 'leave-success' });
+              onNavigate('home');
+            }}
+            style={{
+              background: '#c41e3a',
+              color: 'white',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Sí, salir
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            style={{
+              background: '#0b6623',
+              color: 'white',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    ), { duration: 5000, id: 'leave-confirm' });
   };
 
   // Manejar invitar a un amigo
@@ -148,7 +179,8 @@ function TablePage({ table, user, onNavigate }) {
 
   // Enviar invitaciones
   const handleSendInvites = () => {
-    console.log('📨 Enviando invitaciones a:', selectedFriends);
+    const count = selectedFriends.length;
+    toast.success(`📨 ${count} invitación${count > 1 ? 'es' : ''} enviada${count > 1 ? 's' : ''}`, { id: 'send-invites' });
     // Aquí después llamarás al backend
     setShowInviteModal(false);
     setSelectedFriends([]);
@@ -205,8 +237,12 @@ function TablePage({ table, user, onNavigate }) {
           </div>
         </div>
 
-        {/* Botón de menú */}
+        {/* Botones de menú y chat */}
         <div className="menu-container">
+          <button className="btn-menu btn-chat">
+            🗣️ Chat
+          </button>
+          
           <button 
             className="btn-menu" 
             onClick={() => setShowMenu(!showMenu)}
@@ -305,14 +341,13 @@ function TablePage({ table, user, onNavigate }) {
       })()}
 
       {/* Panel de acciones */}
-      <div className="actions-panel">
-        <button className="btn-action">🗣️ Chat</button>
-        {isSpectator && (
+      {isSpectator && (
+        <div className="actions-panel">
           <button className="btn-action btn-rejoin" onClick={handleSitDown}>
             🪡 Volver a la Mesa
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Modal de invitación a amigos */}
       {showInviteModal && (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './PokerTable.css';
 
 function PokerTable({ 
@@ -13,31 +13,26 @@ function PokerTable({
   pot = 0,
   sidePots = []
 }) {
-  // Formatear carta para mostrar (e.g., "AS" → "A♠", "KH" → "K♥")
-  const formatCard = (card) => {
-    if (!card || card.length < 2) return '';
+  // Estado para rastrear qué cartas ya fueron reveladas
+  const [revealedCards, setRevealedCards] = useState([]);
+  // Obtener ruta de imagen de carta (e.g., "AS" → "/assets/images/AS.png")
+  const getCardImage = (card) => {
+    if (!card || card.length < 2) return null;
     
-    const rank = card.charAt(0);
-    const suitChar = card.charAt(1).toUpperCase();
+    // Normalizar formato: "10H" debe quedar como "10H", "Ah" como "AH"
+    let rank = card.slice(0, -1).toUpperCase();
+    let suit = card.slice(-1).toUpperCase();
     
-    const suits = {
-      'S': '♠',
-      'H': '♥',
-      'D': '♦',
-      'C': '♣'
-    };
+    // Asegurar que rank esté en el formato correcto
+    const validRanks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    const validSuits = ['C', 'D', 'H', 'S'];
     
-    const colors = {
-      'S': 'black',
-      'H': 'red',
-      'D': 'red',
-      'C': 'black'
-    };
+    if (!validRanks.includes(rank) || !validSuits.includes(suit)) {
+      console.warn(`Carta inválida: ${card}`);
+      return null;
+    }
     
-    return {
-      display: `${rank}${suits[suitChar] || suitChar}`,
-      color: colors[suitChar] || 'black'
-    };
+    return `/assets/images/${rank}${suit}.png`;
   };
 
   // Determinar qué cartas mostrar según fase del juego
@@ -59,6 +54,29 @@ function PokerTable({
 
   const visibleCards = getVisibleCards();
   const emptySlots = 5 - visibleCards.length;
+
+  // Efecto para revelar cartas nuevas con delay
+  useEffect(() => {
+    // Resetear cuando cambia la fase a waiting (nueva mano)
+    if (gamePhase === 'waiting') {
+      setRevealedCards([]);
+      return;
+    }
+
+    // Agregar nuevas cartas con un pequeño delay para activar la transición
+    visibleCards.forEach((card, index) => {
+      if (!revealedCards.includes(card)) {
+        setTimeout(() => {
+          setRevealedCards(prev => {
+            if (!prev.includes(card)) {
+              return [...prev, card];
+            }
+            return prev;
+          });
+        }, 100); // Pequeño delay para que el navegador detecte el cambio
+      }
+    });
+  }, [visibleCards, gamePhase]);
   // Posiciones de los asientos alrededor de la mesa según el número máximo
   const seatPositions = {
     4: [
@@ -77,13 +95,13 @@ function PokerTable({
     ],
     8: [
       { top: '0%', left: '50%', transform: 'translateX(-50%)' },     // Arriba centro
-      { top: '12%', right: '3%' },                                   // Arriba derecha
-      { top: '45%', right: '0%', transform: 'translateY(-50%)' },    // Centro derecha
-      { bottom: '12%', right: '3%' },                                // Abajo derecha
+      { top: '8%', right: '8%' },                                    // Arriba derecha
+      { top: '50%', right: '0%', transform: 'translateY(-50%)' },    // Centro derecha
+      { bottom: '8%', right: '8%' },                                 // Abajo derecha
       { bottom: '0%', left: '50%', transform: 'translateX(-50%)' },  // Abajo centro
-      { bottom: '12%', left: '3%' },                                 // Abajo izquierda
-      { top: '45%', left: '0%', transform: 'translateY(-50%)' },     // Centro izquierda
-      { top: '12%', left: '3%' }                                     // Arriba izquierda
+      { bottom: '8%', left: '8%' },                                  // Abajo izquierda
+      { top: '50%', left: '0%', transform: 'translateY(-50%)' },     // Centro izquierda
+      { top: '8%', left: '8%' }                                      // Arriba izquierda
     ]
   };
 
@@ -104,17 +122,27 @@ function PokerTable({
           <div className="cards-row-table">
             {/* Cartas visibles */}
             {visibleCards.map((card, index) => {
-              const formattedCard = formatCard(card);
+              const cardImage = getCardImage(card);
+              const isRevealed = revealedCards.includes(card);
               return (
                 <div 
-                  key={index} 
-                  className={`community-card-table revealed card-${index}`}
-                  style={{ animationDelay: `${index * 0.2}s` }}
+                  key={card} 
+                  className={`community-card-table ${isRevealed ? 'revealed' : ''} card-${index}`}
+                  style={{ transitionDelay: `${index * 0.4}s` }}
                 >
-                  <div className="card-content-table" style={{ color: formattedCard.color }}>
-                    <div className="card-rank-top-table">{formattedCard.display}</div>
-                    <div className="card-suit-table">{formattedCard.display.slice(-1)}</div>
-                    <div className="card-rank-bottom-table">{formattedCard.display}</div>
+                  <div className="card-inner-table">
+                    <div className="card-back-table">🂠</div>
+                    <div className="card-front-table">
+                      {cardImage ? (
+                        <img 
+                          src={cardImage} 
+                          alt={card} 
+                          className="card-image"
+                        />
+                      ) : (
+                        <div className="card-placeholder-table">?</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ejemplo Giro de Cartas - PokerKings</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 100%);
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      color: #daa520;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .demo-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      perspective: 1000px;
+    }
+
+    .card {
+      width: 70px;
+      height: 100px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+      position: relative;
+      transform-style: preserve-3d;
+      cursor: pointer;
+    }
+
+    /* Contenedor interno con dos caras */
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 1.2s ease-in-out;
+      transform-style: preserve-3d;
+    }
+
+    .card.revealing .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* Cara frontal y trasera */
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Reverso de la carta (🂠) */
+    .card-back {
+      background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
+      border: 2px solid rgba(218, 165, 32, 0.5);
+      color: rgba(218, 165, 32, 0.4);
+      font-size: 3rem;
+      transform: rotateY(0deg);
+    }
+
+    /* Frente de la carta (imagen) */
+    .card-front {
+      background: white;
+      transform: rotateY(180deg);
+      overflow: hidden;
+    }
+
+    .card-front img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    button {
+      background: linear-gradient(135deg, #daa520 0%, #b8941e 100%);
+      color: #0a0e27;
+      border: 2px solid #ffd700;
+      padding: 12px 30px;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(218, 165, 32, 0.3);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(218, 165, 32, 0.5);
+    }
+
+    .info {
+      color: #e0e0e0;
+      text-align: center;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎰 Ejemplo de Giro de Cartas</h1>
+  
+  <div class="info">
+    <p>Las cartas aparecerán con una animación de giro 3D (rotateY) cuando se revelen.</p>
+    <p>Haz clic en el botón para ver la animación en acción.</p>
+  </div>
+
+  <button onclick="revelarCartas()">🎴 Revelar Cartas (Flop)</button>
+
+  <div class="demo-container">
+    <div class="card" id="card1">
+      <div class="card-inner">
+        <div class="card-back">🂠</div>
+        <div class="card-front"><img src="./public/assets/images/AS.png" alt="AS"></div>
+      </div>
+    </div>
+    <div class="card" id="card2">
+      <div class="card-inner">
+        <div class="card-back">🂠</div>
+        <div class="card-front"><img src="./public/assets/images/KH.png" alt="KH"></div>
+      </div>
+    </div>
+    <div class="card" id="card3">
+      <div class="card-inner">
+        <div class="card-back">🂠</div>
+        <div class="card-front"><img src="./public/assets/images/QD.png" alt="QD"></div>
+      </div>
+    </div>
+    <div class="card" id="card4">
+      <div class="card-inner">
+        <div class="card-back">🂠</div>
+        <div class="card-front"><img src="./public/assets/images/JC.png" alt="JC"></div>
+      </div>
+    </div>
+    <div class="card" id="card5">
+      <div class="card-inner">
+        <div class="card-back">🂠</div>
+        <div class="card-front"><img src="./public/assets/images/10S.png" alt="10S"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let cartasReveladas = 0;
+
+    function revelarCartas() {
+      if (cartasReveladas >= 5) {
+        // Reset - quitar clase revealing de todas
+        cartasReveladas = 0;
+        for (let i = 1; i <= 5; i++) {
+          const card = document.getElementById('card' + i);
+          card.classList.remove('revealing');
+        }
+        return;
+      }
+
+      const numCartas = cartasReveladas === 0 ? 3 : 1; // Flop = 3, Turn/River = 1
+      
+      for (let i = 0; i < numCartas && cartasReveladas < 5; i++) {
+        setTimeout(() => {
+          const cardIndex = cartasReveladas;
+          const card = document.getElementById('card' + (cardIndex + 1));
+          
+          // Añadir clase para iniciar el giro
+          card.classList.add('revealing');
+          
+          cartasReveladas++;
+        }, i * 400); // Delay entre cada carta
+      }
+    }
+  </script>
+</body>
+</html>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import PokerTable from '../components/table/PokerTable';
 import BettingActions from '../components/table/BettingActions';
-import CommunityCards from '../components/table/CommunityCards';
 import usePokerGame from '../hooks/usePokerGame';
 import './TablePage.css';
 

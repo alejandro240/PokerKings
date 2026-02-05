@@ -66,9 +66,9 @@ export const calculatePositions = (playersArray, dealerIndex) => {
   let smallBlindIndex, bigBlindIndex;
   
   if (count === 2) {
-    // Heads-up: dealer es SB, otro es BB
-    smallBlindIndex = dealerIndex;
-    bigBlindIndex = (dealerIndex + 1) % count;
+    // Heads-up solicitado: dealer es BB, otro es SB
+    smallBlindIndex = (dealerIndex + 1) % count;
+    bigBlindIndex = dealerIndex;
   } else {
     // 6-max+: estándar
     smallBlindIndex = (dealerIndex + 1) % count;
@@ -129,7 +129,9 @@ export const initializeGame = async (tableId, playersData) => {
     // El siguiente jugador en turno será quien actúa primero (después de BB)
     // En preflop: UTG (after BB)
     // Si es heads-up (2 jugadores): dealer actúa primero
-    const currentPlayerIndex = players.length === 2 ? dealerIndex : (positions.bigBlindIndex + 1) % players.length;
+    const currentPlayerIndex = players.length === 2
+      ? positions.smallBlindIndex
+      : (positions.bigBlindIndex + 1) % players.length;
 
     // Crear el juego
     const game = await Game.create({
@@ -159,6 +161,136 @@ export const initializeGame = async (tableId, playersData) => {
   } catch (error) {
     throw new Error(`Error inicializando juego: ${error.message}`);
   }
+};
+
+/**
+ * Activar un juego en espera (waiting) con jugadores reales
+ */
+export const activateWaitingGame = async (game, playersData) => {
+  const table = await Table.findByPk(game.tableId);
+  if (!table) throw new Error('Mesa no encontrada');
+
+  const smallBlindAmount = table.smallBlind;
+  const bigBlindAmount = table.bigBlind;
+
+  const players = playersData.map(playerData => ({
+    userId: playerData.userId,
+    chips: playerData.chips || 1000,
+    committed: 0,
+    hand: null,
+    folded: false,
+    isSittingOut: false,
+    lastAction: null,
+    betInPhase: 0
+  }));
+
+  const dealerIndex = 0;
+  const positions = calculatePositions(players, dealerIndex);
+  const deck = createDeck();
+
+  players.forEach(player => {
+    player.hand = [deck.pop(), deck.pop()];
+  });
+
+  const currentPlayerIndex = players.length === 2
+    ? positions.smallBlindIndex
+    : (positions.bigBlindIndex + 1) % players.length;
+
+  players[positions.smallBlindIndex].chips -= smallBlindAmount;
+  players[positions.smallBlindIndex].committed = smallBlindAmount;
+  players[positions.bigBlindIndex].chips -= bigBlindAmount;
+  players[positions.bigBlindIndex].committed = bigBlindAmount;
+
+  await game.update({
+    phase: 'preflop',
+    status: 'active',
+    dealerId: players[dealerIndex].userId,
+    smallBlindId: players[positions.smallBlindIndex].userId,
+    bigBlindId: players[positions.bigBlindIndex].userId,
+    players,
+    currentPlayerIndex,
+    currentBet: bigBlindAmount,
+    deck,
+    communityCards: [],
+    pot: smallBlindAmount + bigBlindAmount
+  });
+
+  return game;
+};
+
+/**
+ * Iniciar una nueva mano en el mismo juego (rotando dealer, SB y BB)
+ */
+const startNextHand = async (game) => {
+  const table = await Table.findByPk(game.tableId);
+  if (!table) {
+    throw new Error('Mesa no encontrada para nueva mano');
+  }
+
+  const smallBlindAmount = table.smallBlind;
+  const bigBlindAmount = table.bigBlind;
+
+  const players = JSON.parse(JSON.stringify(game.players || []));
+
+  // Reset estado por jugador
+  players.forEach((p) => {
+    p.folded = false;
+    p.lastAction = null;
+    p.betInPhase = 0;
+    p.committed = 0;
+  });
+
+  // Rotar dealer
+  const currentDealerIndex = players.findIndex(p => p.userId === game.dealerId);
+  const dealerIndex = getNextDealerPosition(currentDealerIndex >= 0 ? currentDealerIndex : 0, players.length);
+  const positions = calculatePositions(players, dealerIndex);
+
+  // Crear mazo y repartir cartas
+  const deck = createDeck();
+  players.forEach((p) => {
+    if (p.chips > 0 && !p.isSittingOut) {
+      p.hand = [deck.pop(), deck.pop()];
+      p.folded = false;
+    } else {
+      p.hand = null;
+      p.folded = true;
+    }
+  });
+
+  // Aplicar blinds
+  const sbIndex = positions.smallBlindIndex;
+  const bbIndex = positions.bigBlindIndex;
+  const sbAmount = Math.min(smallBlindAmount, players[sbIndex].chips);
+  const bbAmount = Math.min(bigBlindAmount, players[bbIndex].chips);
+
+  players[sbIndex].chips -= sbAmount;
+  players[sbIndex].committed = sbAmount;
+  players[bbIndex].chips -= bbAmount;
+  players[bbIndex].committed = bbAmount;
+
+  const currentPlayerIndex = players.length === 2
+    ? dealerIndex
+    : (positions.bigBlindIndex + 1) % players.length;
+
+  game.status = 'active';
+  game.phase = 'preflop';
+  game.dealerId = players[dealerIndex].userId;
+  game.smallBlindId = players[sbIndex].userId;
+  game.bigBlindId = players[bbIndex].userId;
+  game.currentPlayerIndex = currentPlayerIndex;
+  game.currentBet = bbAmount;
+  game.pot = sbAmount + bbAmount;
+  game.communityCards = [];
+  game.deck = deck;
+  game.sidePots = [];
+  game.winnerId = null;
+  game.winnerIds = null;
+  game.winners = null;
+  game.endTime = null;
+  game.players = players;
+  game.changed('players', true);
+
+  await game.save();
 };
 
 /**
@@ -240,17 +372,36 @@ const finishByFold = async (game) => {
   // Add the winnings to winner's chips
   winner.chips += winningsFromPots;
 
+  // Actualizar jugadores con el bote distribuido
+  game.players = JSON.parse(JSON.stringify(game.players));
+  game.changed('players', true);
+
+  // ¿Hay suficientes jugadores con fichas para seguir?
+  const playersWithChips = game.players.filter(p => p.chips > 0 && !p.isSittingOut);
+  if (playersWithChips.length >= 2) {
+    await startNextHand(game);
+    return {
+      winner: { ...winner, chipsWon: winningsFromPots },
+      winners: [{ userId: winner.userId, chipsWon: winningsFromPots }],
+      potWon: winningsFromPots,
+      handContinues: true
+    };
+  }
+
   game.status = 'finished';
   game.winnerId = winner.userId;
   game.pot = 0;
   game.sidePots = sidePots;
   game.endTime = new Date();
-  game.players = JSON.parse(JSON.stringify(game.players));
-  game.changed('players', true);
 
   await game.save();
 
-  return winner;
+  return {
+    winner: { ...winner, chipsWon: winningsFromPots },
+    winners: [{ userId: winner.userId, chipsWon: winningsFromPots }],
+    potWon: winningsFromPots,
+    handContinues: false
+  };
 };
 
 /**
@@ -390,6 +541,18 @@ const finishShowdown = async (game) => {
 
   console.log('[DEBUG][WINNERS] All winners:', winners.map(w => `${w.username} (${w.chipsWon} chips)`).join(', '));
 
+  // Actualizar jugadores con chips distribuidos
+  game.players = distributedPlayers;
+  game.changed('players', true);
+
+  // ¿Hay suficientes jugadores con fichas para seguir?
+  const playersWithChips = game.players.filter(p => p.chips > 0 && !p.isSittingOut);
+  if (playersWithChips.length >= 2) {
+    const potWon = winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+    await startNextHand(game);
+    return { winner: primaryWinner, winners, potWon, handContinues: true };
+  }
+
   game.status = 'finished';
   game.phase = 'showdown';
   game.winnerId = primaryWinner.userId;
@@ -398,12 +561,10 @@ const finishShowdown = async (game) => {
   game.pot = 0;
   game.sidePots = sidePots;
   game.endTime = new Date();
-  game.players = distributedPlayers;
-  game.changed('players', true);
 
   await game.save();
 
-  return primaryWinner;
+  return { winner: primaryWinner, handContinues: false };
 };
 
 /**
@@ -631,8 +792,16 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
       const activePlayers = getActivePlayers(players);
       if (activePlayers.length === 1) {
         console.log('[DEBUG][NEXT_PLAYER] Only 1 active player, ending by fold');
-        const winner = await finishByFold(game);
-        return { gameOver: true, winner };
+        const foldResult = await finishByFold(game);
+        if (foldResult?.handContinues) {
+          return {
+            success: true,
+            handOver: true,
+            winner: foldResult.winner,
+            gameState: await getGameState(game.id, false)
+          };
+        }
+        return { gameOver: true, winner: foldResult?.winner || foldResult };
       }
       // Todos están all-in, avanzar a la siguiente fase automáticamente
       console.log('[DEBUG][NEXT_PLAYER] All players all-in, breaking');
@@ -687,8 +856,16 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
   }
 
   if (activePlayers.length === 1) {
-    const winner = await finishByFold(game);
-    return { gameOver: true, winner };
+    const foldResult = await finishByFold(game);
+    if (foldResult?.handContinues) {
+      return {
+        success: true,
+        handOver: true,
+        winner: foldResult.winner,
+        gameState: await getGameState(game.id, false)
+      };
+    }
+    return { gameOver: true, winner: foldResult?.winner || foldResult };
   }
 
   if (roundComplete) {
@@ -728,8 +905,16 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
 
     // Flujo normal: avanzar solo una fase
     if (game.phase === 'river') {
-      const winner = await finishShowdown(game);
-      return { gameOver: true, winner };
+      const showdownResult = await finishShowdown(game);
+      if (showdownResult?.handContinues) {
+        return {
+          success: true,
+          handOver: true,
+          winner: showdownResult.winner,
+          gameState: await getGameState(game.id, false)
+        };
+      }
+      return { gameOver: true, winner: showdownResult?.winner || showdownResult };
     }
 
     await advanceGamePhase(game);

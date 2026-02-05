@@ -7,6 +7,8 @@ import { Game, User, Table } from '../models/index.js';
 import { processPlayerAction, getGameState } from './game.service.js';
 import { getIO } from '../config/socket.js';
 
+const botTurnLocks = new Set();
+
 /**
  * Evaluar la fuerza de la mano del jugador
  * Retorna: 'weak' | 'medium' | 'strong'
@@ -62,9 +64,10 @@ export const makeBotDecision = (gameState, botPlayerIndex, currentBet) => {
   }
 
   // Determinar acciones disponibles
-  const canCheck = currentBet === 0 || botPlayer.bet === currentBet;
-  const canCall = botPlayer.chips > 0 && currentBet > botPlayer.bet;
-  const canRaise = botPlayer.chips > currentBet;
+  const committed = parseInt(botPlayer.committed) || 0;
+  const canCheck = currentBet === 0 || committed === currentBet;
+  const canCall = botPlayer.chips > 0 && currentBet > committed;
+  const canRaise = botPlayer.chips > 0 && (committed + botPlayer.chips) > currentBet;
 
   // Evaluar la mano
   const handStrength = evaluateHandStrength(botPlayer.holeCards);
@@ -88,22 +91,19 @@ export const makeBotDecision = (gameState, botPlayerIndex, currentBet) => {
       }
     } else if (handStrength === 'medium') {
       // Con mano mediocre, casi siempre call
-      if (canCall && randomFactor < 0.85) {
-        return { action: 'call', amount: currentBet };
-      }
-      // Ocasionalmente fold
-      if (randomFactor < 0.3) {
-        return { action: 'fold', amount: 0 };
-      }
       if (canCall) {
         return { action: 'call', amount: currentBet };
       }
+      if (canCheck) {
+        return { action: 'check', amount: 0 };
+      }
     } else {
-      // Mano débil, pero aun así sometimes call para mantener el juego interesante
-      if (randomFactor < 0.6) {
-        if (canCall) {
-          return { action: 'call', amount: currentBet };
-        }
+      // Mano débil: evitar fold si puede seguir en juego
+      if (canCall) {
+        return { action: 'call', amount: currentBet };
+      }
+      if (canCheck) {
+        return { action: 'check', amount: 0 };
       }
       return { action: 'fold', amount: 0 };
     }
@@ -150,6 +150,11 @@ export const makeBotDecision = (gameState, botPlayerIndex, currentBet) => {
  * Ejecutar turno automático del bot
  */
 export const executeBotTurn = async (gameId) => {
+  if (botTurnLocks.has(gameId)) {
+    console.log(`⏳ [BOT] Turno ya en ejecución para gameId: ${gameId}`);
+    return null;
+  }
+  botTurnLocks.add(gameId);
   console.log(`🤖 [executeBotTurn] Iniciando para gameId: ${gameId}`);
   try {
     const game = await Game.findByPk(gameId);
@@ -202,6 +207,12 @@ export const executeBotTurn = async (gameId) => {
       decision.amount
     );
 
+    // Verificar si el juego terminó
+    if (result.gameOver) {
+      console.log(`🏁 [BOT] Juego terminado. Ganador: ${result.winner?.userId}`);
+      return null;
+    }
+
     if (!result || !result.success) {
       console.error('❌ [BOT] Error al procesar acción del bot:', result);
       return null;
@@ -211,6 +222,7 @@ export const executeBotTurn = async (gameId) => {
 
     // Obtener el juego actualizado
     const updatedGame = await Game.findByPk(gameId);
+    console.log(`🔄 [BOT] Juego actualizado. CurrentPlayerIndex: ${updatedGame.currentPlayerIndex}, Status: ${updatedGame.status}`);
 
     // Emitir actualización a todos los jugadores
     const table = await Table.findByPk(updatedGame.tableId);
@@ -223,16 +235,29 @@ export const executeBotTurn = async (gameId) => {
 
     // Si el siguiente jugador también es bot, ejecutar automáticamente
     const nextPlayer = updatedGame.players[updatedGame.currentPlayerIndex];
-    const nextUser = await User.findByPk(nextPlayer?.userId);
+    console.log(`👀 [BOT] Siguiente jugador:`, nextPlayer ? `userId: ${nextPlayer.userId}` : 'NO EXISTE');
+    
+    if (!nextPlayer) {
+      console.log('❌ [BOT] No hay siguiente jugador');
+      return updatedGame;
+    }
+    
+    const nextUser = await User.findByPk(nextPlayer.userId);
+    console.log(`👤 [BOT] Usuario siguiente: ${nextUser?.username}, isBot: ${nextUser?.isBot}, game status: ${updatedGame.status}`);
 
     if (nextUser?.isBot && updatedGame.status === 'active') {
+      console.log(`🔁 [BOT] Ejecutando siguiente bot en 1 segundo...`);
       // Esperar un poco antes de ejecutar el siguiente bot
       setTimeout(() => executeBotTurn(gameId), 1000);
+    } else {
+      console.log(`⏸️ [BOT] No ejecutando siguiente turno. isBot: ${nextUser?.isBot}, status: ${updatedGame.status}`);
     }
 
     return updatedGame;
   } catch (error) {
     console.error('❌ Error ejecutando turno del bot:', error.message);
     return null;
+  } finally {
+    botTurnLocks.delete(gameId);
   }
 };

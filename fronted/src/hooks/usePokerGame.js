@@ -34,6 +34,7 @@ const usePokerGame = () => {
   // Winners from backend
   const [winners, setWinners] = useState([]); // Para múltiples ganadores
   const [winnerIds, setWinnerIds] = useState([]); // IDs de ganadores
+  const [lastHandResult, setLastHandResult] = useState(null);
 
   // Configurar listeners de WebSocket al montar
   useEffect(() => {
@@ -52,6 +53,8 @@ const usePokerGame = () => {
         setCurrentBet(gameState.currentBet || 0);
         setMinRaise(gameState.minRaise || 0);
         setDealerPosition(gameState.dealerIndex || 0);
+        setSmallBlindPosition(gameState.smallBlindIndex ?? 0);
+        setBigBlindPosition(gameState.bigBlindIndex ?? 0);
         
         let currentIdx = -1;
         
@@ -67,9 +70,13 @@ const usePokerGame = () => {
             setPlayerIndex(currentIdx);
             const currentPlayer = gameState.players[currentIdx];
             setPlayerChips(currentPlayer.chips || 0);
-            setPlayerBet(currentPlayer.bet || 0);
+            setPlayerBet(currentPlayer.committed || 0);
             setPlayerHoleCards(currentPlayer.holeCards || []);
             setPlayerHasFolded(currentPlayer.folded || false);
+            // Resetear acciones cuando es tu turno o al empezar mano
+            if (gameState.currentPlayerIndex === currentIdx || !currentPlayer.lastAction) {
+              setPlayerHasActed(false);
+            }
           }
         }
         
@@ -114,13 +121,26 @@ const usePokerGame = () => {
       }
     });
 
+    gameSocket.on('handOver', (handData) => {
+      setLastHandResult(handData);
+      setPlayerHasActed(false);
+    });
+
     return () => {
       // Limpiar listeners al desmontar
       gameSocket.off('gameStateUpdated', null);
       gameSocket.off('phaseChanged', null);
       gameSocket.off('showdown', null);
+      gameSocket.off('handOver', null);
     };
   }, []);
+
+  // Resetear acciones cuando cambia el turno al jugador actual
+  useEffect(() => {
+    if (currentPlayerTurn === playerIndex) {
+      setPlayerHasActed(false);
+    }
+  }, [currentPlayerTurn, playerIndex]);
 
   // Actions que envían al backend vía REST API
   const sendAction = useCallback(async (action, amount = 0) => {
@@ -146,6 +166,14 @@ const usePokerGame = () => {
         console.error('❌ Error en acción:', data.error);
       } else {
         console.log('✅ Acción procesada:', action);
+        if (data.handOver && data.winner) {
+          setLastHandResult({
+            winnerId: data.winner.userId || data.winner.id,
+            winnerName: data.winner.username || 'Desconocido',
+            potWon: data.potWon || 0
+          });
+          setPlayerHasActed(false);
+        }
       }
       return data;
     } catch (error) {
@@ -227,11 +255,14 @@ const usePokerGame = () => {
   }, []);
 
   // Check if player can perform actions
-  const canCheck = currentBet === playerBet && !playerHasFolded && !playerHasActed;
-  const canCall = currentBet > playerBet && !playerHasFolded && !playerHasActed;
-  const canRaise = playerChips > (currentBet - playerBet + minRaise) && !playerHasFolded && !playerHasActed;
-  const canFold = !playerHasFolded && !playerHasActed;
-  const canAllIn = playerChips > 0 && !playerHasFolded && !playerHasActed;
+  const currentPlayerState = players[playerIndex];
+  const committed = currentPlayerState?.committed ?? playerBet;
+  const isMyTurn = currentPlayerTurn === playerIndex;
+  const canCheck = isMyTurn && currentBet === committed && !playerHasFolded;
+  const canCall = isMyTurn && currentBet > committed && !playerHasFolded;
+  const canRaise = isMyTurn && playerChips > (currentBet - committed + minRaise) && !playerHasFolded;
+  const canFold = isMyTurn && !playerHasFolded;
+  const canAllIn = isMyTurn && playerChips > 0 && !playerHasFolded;
 
   return {
     // Game state
@@ -259,6 +290,7 @@ const usePokerGame = () => {
     // Winners (múltiples ganadores)
     winners,
     winnerIds,
+    lastHandResult,
     
     // Action checks
     canCheck,

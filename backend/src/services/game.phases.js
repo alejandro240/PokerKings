@@ -75,11 +75,11 @@ export const getFirstToActInPhase = (players, dealerIndex, phase) => {
   if (count === 2) {
     // HEADS-UP ESPECIAL
     if (phase === 'preflop') {
-      // Preflop: dealer (SB) actúa primero en heads-up
-      return dealerIndex;
-    } else {
-      // Postflop: otro jugador (BB) actúa primero
+      // Preflop: SB actúa primero (dealer es BB)
       return (dealerIndex + 1) % count;
+    } else {
+      // Postflop: BB (dealer) actúa primero
+      return dealerIndex;
     }
   }
   

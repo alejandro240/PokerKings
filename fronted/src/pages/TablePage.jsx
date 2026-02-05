@@ -15,6 +15,7 @@ function TablePage({ table, user, onNavigate }) {
   const [selectedFriends, setSelectedFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [lastShownHandOver, setLastShownHandOver] = useState(null);
 
   // Usar el hook de juego de póker (conectado con backend)
   const pokerGame = usePokerGame();
@@ -25,6 +26,16 @@ function TablePage({ table, user, onNavigate }) {
       setPlayers(pokerGame.players);
     }
   }, [pokerGame.players]);
+
+  useEffect(() => {
+    if (pokerGame.lastHandResult) {
+      const key = `${pokerGame.lastHandResult.winnerId}-${pokerGame.lastHandResult.potWon}`;
+      if (key !== lastShownHandOver) {
+        toast.success(`🏆 Ganador: ${pokerGame.lastHandResult.winnerName} (+${(pokerGame.lastHandResult.potWon || 0).toLocaleString()} PK)`);
+        setLastShownHandOver(key);
+      }
+    }
+  }, [pokerGame.lastHandResult, lastShownHandOver]);
 
   // Inicializar el juego desde el backend
   useEffect(() => {
@@ -109,7 +120,6 @@ function TablePage({ table, user, onNavigate }) {
 
   // Manejar abandonar partida
   const handleLeaveTable = async () => {
-    const confirm = window.confirm('¿Estás seguro de que quieres abandonar la partida?');
     toast.dismiss('leave-confirm');
     
     toast((t) => (

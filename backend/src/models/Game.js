@@ -32,7 +32,7 @@ const Game = sequelize.define('Game', {
     defaultValue: 0
   },
   phase: {
-    type: DataTypes.ENUM('preflop', 'flop', 'turn', 'river', 'showdown'),
+    type: DataTypes.ENUM('waiting', 'preflop', 'flop', 'turn', 'river', 'showdown'),
     defaultValue: 'preflop'
   },
   communityCards: {
@@ -40,7 +40,7 @@ const Game = sequelize.define('Game', {
     defaultValue: []
   },
   status: {
-    type: DataTypes.ENUM('active', 'finished'),
+    type: DataTypes.ENUM('waiting', 'active', 'finished'),
     defaultValue: 'active'
   },
   dealerId: {

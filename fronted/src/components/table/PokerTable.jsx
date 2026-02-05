@@ -248,6 +248,18 @@ function PokerTable({
                   <div className="player-level">🎖️ Nv {player.level || 1}</div>
                 </div>
                 <div className="player-name">{player.username}</div>
+                
+                {/* Mostrar última acción del jugador */}
+                {player.lastAction && (
+                  <div className="last-action-badge">
+                    {player.lastAction === 'fold' && '❌ Fold'}
+                    {player.lastAction === 'check' && '✔️ Check'}
+                    {player.lastAction === 'call' && '👁️ Call'}
+                    {player.lastAction === 'raise' && '⬆️ Raise'}
+                    {player.lastAction === 'all-in' && '💥 All-In'}
+                  </div>
+                )}
+                
                 <div className="player-balance">
                   <span className="pk-coin">🪙</span>
                   <span className="balance-amount">{(player.chips || 0).toLocaleString()} PK</span>

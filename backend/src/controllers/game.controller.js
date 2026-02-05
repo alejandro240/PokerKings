@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import { getIO } from '../config/socket.js';
 import {
   initializeGame,
+  activateWaitingGame,
   processPlayerAction,
   getGameState,
   createDeck
@@ -29,7 +30,7 @@ export const startGame = async (req, res) => {
       return res.status(404).json({ error: 'Mesa no encontrada' });
     }
 
-    // Verificar que no hay otro juego activo en la mesa
+    // Verificar si hay juego activo o en espera
     const activeGame = await Game.findOne({
       where: { tableId, status: 'active' }
     });
@@ -62,16 +63,71 @@ export const startGame = async (req, res) => {
       }
     }
 
+    const waitingGame = await Game.findOne({
+      where: { tableId, status: 'waiting' }
+    });
+
+    if (waitingGame) {
+      // Unirse a juego en espera
+      const gamePlayers = typeof waitingGame.players === 'string'
+        ? JSON.parse(waitingGame.players || '[]')
+        : (waitingGame.players || []);
+
+      const alreadyInGame = gamePlayers.some(p => playerIds.includes(p.userId));
+      if (!alreadyInGame) {
+        const newPlayerId = playerIds[0];
+        const user = await User.findByPk(newPlayerId);
+        if (user) {
+          gamePlayers.push({ userId: user.id, chips: Math.min(user.chips, 10000) });
+          waitingGame.players = gamePlayers;
+          waitingGame.changed('players', true);
+          await waitingGame.save();
+        }
+      }
+
+      if (gamePlayers.length >= 2) {
+        const players = await User.findAll({
+          where: { id: gamePlayers.map(p => p.userId) },
+          attributes: ['id', 'chips']
+        });
+
+        const playersData = players.map(p => ({
+          userId: p.id,
+          chips: Math.min(p.chips, 10000)
+        }));
+
+        await activateWaitingGame(waitingGame, playersData);
+
+        const gameState = await getGameState(waitingGame.id);
+        const io = getIO();
+        io.to(`table_${tableId}`).emit('gameStateUpdated', gameState);
+
+        return res.status(200).json({
+          success: true,
+          message: 'Juego iniciado con jugadores',
+          game: gameState
+        });
+      }
+
+      const waitingState = await getGameState(waitingGame.id, false);
+      return res.status(200).json({
+        success: true,
+        message: 'Esperando más jugadores',
+        game: waitingState
+      });
+    }
+
     // Agregar bots según la configuración de la mesa
     const botsToAdd = table.botsCount || 0;
     
     if (botsToAdd > 0) {
       console.log(`⚠️  Agregando ${botsToAdd} bots según configuración de la mesa...`);
       
-      // Buscar otros usuarios disponibles para simular jugadores (bots)
+      // Buscar usuarios bot disponibles
       const availablePlayers = await User.findAll({
         where: { 
-          id: { [Op.notIn]: playerIds }
+          id: { [Op.notIn]: playerIds },
+          isBot: true  // Solo bots reales
         },
         limit: botsToAdd,
         order: [['createdAt', 'ASC']]
@@ -92,8 +148,24 @@ export const startGame = async (req, res) => {
     });
 
     if (players.length < 2) {
-      return res.status(400).json({ 
-        error: 'No hay suficientes jugadores disponibles. Crea más usuarios de prueba.' 
+      const waitingGameCreated = await Game.create({
+        tableId,
+        phase: 'waiting',
+        status: 'waiting',
+        players: players.map(p => ({ userId: p.id, chips: Math.min(p.chips, 10000) })),
+        communityCards: [],
+        currentBet: 0,
+        pot: 0
+      });
+
+      const waitingState = await getGameState(waitingGameCreated.id, false);
+      const io = getIO();
+      io.to(`table_${tableId}`).emit('gameStateUpdated', waitingState);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Mesa creada. Esperando más jugadores',
+        game: waitingState
       });
     }
 
@@ -200,6 +272,34 @@ export const playerAction = async (req, res) => {
         gameOver: true,
         winner: result.winner || null,
         gameState: await getGameState(gameId, false)
+      });
+    }
+
+    if (result.handOver) {
+      try {
+        const winnerId = result.winner?.userId || result.winner?.id;
+        const winnerUser = winnerId ? await User.findByPk(winnerId) : null;
+        const potWon = result.potWon || (result.winners || []).reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+        const io = getIO();
+        const table = await Table.findByPk(game.tableId);
+        if (table) {
+          io.to(`table_${table.id}`).emit('handOver', {
+            gameId,
+            tableId: table.id,
+            winnerId,
+            winnerName: winnerUser?.username || 'Desconocido',
+            potWon
+          });
+        }
+      } catch (emitError) {
+        console.error('Error emitiendo handOver:', emitError.message);
+      }
+
+      return res.json({
+        success: true,
+        handOver: true,
+        winner: result.winner || null,
+        gameState: result.gameState || await getGameState(gameId, false)
       });
     }
 

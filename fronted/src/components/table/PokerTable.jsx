@@ -77,10 +77,11 @@ function PokerTable({
             }
             return prev;
           });
-        }, 100); // Pequeño delay para que el navegador detecte el cambio
+        }, index * 200); // Delay escalonado para animación
       }
     });
-  }, [visibleCards, gamePhase]);
+  }, [gamePhase, communityCards.length]); // Solo cuando cambia la fase o el número de cartas
+  
   // Posiciones de los asientos alrededor de la mesa según el número máximo
   const seatPositions = {
     4: [

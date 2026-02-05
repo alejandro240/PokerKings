@@ -64,7 +64,7 @@ const usePokerGame = () => {
           setPlayers(gameState.players);
           
           // Encontrar al jugador actual
-          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
           currentIdx = gameState.players.findIndex(p => p.userId === currentUser.id);
           if (currentIdx !== -1) {
             setPlayerIndex(currentIdx);
@@ -144,8 +144,8 @@ const usePokerGame = () => {
 
   // Actions que envían al backend vía REST API
   const sendAction = useCallback(async (action, amount = 0) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const token = localStorage.getItem('token');
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const token = sessionStorage.getItem('token');
     
     try {
       const response = await fetch(`http://localhost:3000/api/games/${gameId}/action`, {
@@ -256,13 +256,29 @@ const usePokerGame = () => {
 
   // Check if player can perform actions
   const currentPlayerState = players[playerIndex];
-  const committed = currentPlayerState?.committed ?? playerBet;
+  const committed = parseInt(currentPlayerState?.committed ?? playerBet) || 0;
+  const currentBetNum = parseInt(currentBet) || 0;
   const isMyTurn = currentPlayerTurn === playerIndex;
-  const canCheck = isMyTurn && currentBet === committed && !playerHasFolded;
-  const canCall = isMyTurn && currentBet > committed && !playerHasFolded;
-  const canRaise = isMyTurn && playerChips > (currentBet - committed + minRaise) && !playerHasFolded;
+  const canCheck = isMyTurn && committed >= currentBetNum && !playerHasFolded;
+  const canCall = isMyTurn && currentBetNum > committed && !playerHasFolded;
+  const canRaise = isMyTurn && playerChips > (currentBetNum - committed + minRaise) && !playerHasFolded;
   const canFold = isMyTurn && !playerHasFolded;
   const canAllIn = isMyTurn && playerChips > 0 && !playerHasFolded;
+
+  // Debug logs para check
+  if (isMyTurn) {
+    console.log('🔍 [usePokerGame] Action Check Debug:', {
+      playerIndex,
+      currentPlayerTurn,
+      isMyTurn,
+      committed,
+      currentBetNum,
+      playerHasFolded,
+      canCheck,
+      canCall,
+      currentPlayerState
+    });
+  }
 
   return {
     // Game state

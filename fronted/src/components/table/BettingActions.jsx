@@ -32,19 +32,16 @@ function BettingActions({
     onAllIn(playerChips);
   };
 
-  if (!isPlayerTurn) {
-    return (
-      <div className="betting-actions-container disabled">
+  console.log('🎮 BettingActions Render:', { isPlayerTurn, canCheck, canCall, canRaise, canFold });
+
+  return (
+    <div className={`betting-actions-container${!isPlayerTurn ? ' disabled' : ''}`}>
+      {!isPlayerTurn && (
         <div className="waiting-turn">
           <span className="waiting-icon">⏳</span>
           <span>Esperando tu turno...</span>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="betting-actions-container">
+      )}
       <div className="betting-info">
         <div className="info-item">
           <span className="info-label">💰 Bote:</span>
@@ -60,7 +57,47 @@ function BettingActions({
         </div>
       </div>
 
-      {showRaiseSlider ? (
+      {/* Barra de botones SIEMPRE VISIBLE */}
+      <div className="action-buttons" style={{ display: showRaiseSlider ? 'none' : 'flex' }}>
+          {/* Botón 1: No ir (Fold) */}
+          {canFold && (
+            <button className="btn-action btn-fold" onClick={onFold} disabled={!isPlayerTurn}>
+              🚫 No ir
+            </button>
+          )}
+          
+          {/* Botón 2: Pasar (Check) - SIEMPRE VISIBLE */}
+          <button 
+            className="btn-action btn-check" 
+            onClick={onCheck}
+            disabled={!isPlayerTurn || !canCheck}
+            title={!canCheck ? "No puedes pasar, debes igualar la apuesta" : "Pasar sin apostar"}
+            style={{
+              display: 'inline-block',
+              visibility: 'visible',
+              opacity: (!isPlayerTurn || !canCheck) ? 0.5 : 1
+            }}
+          >
+            ✅ Pasar
+          </button>
+          
+          {/* Botón 3: Igualar (Call) - Solo si hay que igualar */}
+          {canCall && (
+            <button className="btn-action btn-call" onClick={onCall} disabled={!isPlayerTurn}>
+              💵 Igualar {currentBet.toLocaleString()} PK
+            </button>
+          )}
+          
+          {/* Botón 4: Subir (Raise) */}
+          {canRaise && (
+            <button className="btn-action btn-raise" onClick={() => setShowRaiseSlider(true)} disabled={!isPlayerTurn}>
+              💸 Subir
+            </button>
+          )}
+        </div>
+
+      {/* Slider de subida */}
+      {showRaiseSlider && (
         <div className="raise-slider-container">
           <div className="slider-header">
             <span>💸 Cantidad a subir</span>
@@ -95,33 +132,6 @@ function BettingActions({
               ✅ Confirmar Subida
             </button>
           </div>
-        </div>
-      ) : (
-        <div className="action-buttons">
-          {/* Botón 1: No ir (Fold) */}
-          {canFold && (
-            <button className="btn-action btn-fold" onClick={onFold}>
-              🚫 No ir
-            </button>
-          )}
-          
-          {/* Botón 2: Pasar / Igualar (Contextual) */}
-          {canCheck ? (
-            <button className="btn-action btn-check" onClick={onCheck}>
-              ✅ Pasar
-            </button>
-          ) : canCall ? (
-            <button className="btn-action btn-call" onClick={onCall}>
-              💵 Igualar {currentBet.toLocaleString()} PK
-            </button>
-          ) : null}
-          
-          {/* Botón 3: Subir (Raise) */}
-          {canRaise && (
-            <button className="btn-action btn-raise" onClick={() => setShowRaiseSlider(true)}>
-              💸 Subir
-            </button>
-          )}
         </div>
       )}
 

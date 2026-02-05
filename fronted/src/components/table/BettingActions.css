@@ -64,12 +64,13 @@
 
 /* Action Buttons */
 .action-buttons {
-  display: flex;
+  display: flex !important;
   justify-content: center;
   align-items: center;
   gap: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
+  visibility: visible !important;
 }
 
 .btn-action {
@@ -83,6 +84,8 @@
   min-width: 180px;
   flex: 1;
   max-width: 300px;
+  display: inline-block !important;
+  visibility: visible !important;
 }
 
 .btn-fold {
@@ -103,10 +106,18 @@
   color: white;
 }
 
-.btn-check:hover {
+.btn-check:hover:not(:disabled) {
   background: linear-gradient(135deg, #0d7a2a 0%, #0a6020 100%);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(11, 102, 35, 0.4);
+}
+
+.btn-check:disabled {
+  background: linear-gradient(135deg, #555555 0%, #333333 100%);
+  border-color: #777777;
+  color: #999999;
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .btn-call {

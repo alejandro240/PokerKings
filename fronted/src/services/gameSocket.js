@@ -14,7 +14,7 @@ class GameSocketService {
     if (!this.socket) {
       this.socket = io(SOCKET_URL, {
         auth: {
-          token: localStorage.getItem('token'),
+          token: sessionStorage.getItem('token'),
         },
         reconnection: true,
         reconnectionDelay: 1000,

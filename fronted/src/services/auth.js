@@ -10,9 +10,9 @@ export const authService = {
       const response = await authAPI.register(username, email, password);
       const { token, user } = response.data;
 
-      // Guardar en localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Guardar en sessionStorage (por pestaña)
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(user));
 
       // Conectar Socket.IO con el token (solo si backend está disponible)
       try {
@@ -37,9 +37,9 @@ export const authService = {
       };
       const mockToken = 'mock-token-' + Date.now();
 
-      // Guardar en localStorage
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      // Guardar en sessionStorage (por pestaña)
+      sessionStorage.setItem('token', mockToken);
+      sessionStorage.setItem('user', JSON.stringify(mockUser));
 
       return { success: true, user: mockUser, token: mockToken };
     }
@@ -51,9 +51,9 @@ export const authService = {
       const response = await authAPI.login(email, password);
       const { token, user } = response.data;
 
-      // Guardar en localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Guardar en sessionStorage (por pestaña)
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(user));
 
       // Conectar Socket.IO con el token (solo si backend está disponible)
       try {
@@ -73,8 +73,8 @@ export const authService = {
       // Si el backend falla, buscar usuario mock en localStorage
       console.warn('Intentando con usuario mock local...');
       
-      const storedUser = localStorage.getItem('user');
-      const storedToken = localStorage.getItem('token');
+      const storedUser = sessionStorage.getItem('user');
+      const storedToken = sessionStorage.getItem('token');
       
       // Si hay un usuario guardado localmente con el mismo email, usar ese
       if (storedUser) {
@@ -95,7 +95,7 @@ export const authService = {
 
   // Obtener usuario actual
   getCurrentUser: () => {
-    const user = localStorage.getItem('user');
+    const user = sessionStorage.getItem('user');
     if (user) {
       const parsedUser = JSON.parse(user);
       // Asegurar que el usuario tenga nivel por defecto si no lo tiene
@@ -108,17 +108,17 @@ export const authService = {
   },
 
   // Obtener token
-  getToken: () => localStorage.getItem('token'),
+  getToken: () => sessionStorage.getItem('token'),
 
   // Verificar si está autenticado
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!sessionStorage.getItem('token');
   },
 
   // Cerrar sesión
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     socketService.disconnect();
   },
 
@@ -128,8 +128,8 @@ export const authService = {
       const response = await authAPI.getProfile();
       const user = response.data;
       
-      // Actualizar en localStorage
-      localStorage.setItem('user', JSON.stringify(user));
+      // Actualizar en sessionStorage
+      sessionStorage.setItem('user', JSON.stringify(user));
       
       return { success: true, user };
     } catch (error) {
@@ -147,7 +147,7 @@ export const authService = {
       const { token } = response.data;
       
       if (token) {
-        localStorage.setItem('token', token);
+        sessionStorage.setItem('token', token);
       }
       
       return { success: true };

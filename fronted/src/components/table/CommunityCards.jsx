@@ -11,6 +11,7 @@ const CommunityCards = ({
   const getVisibleCards = () => {
     switch (gamePhase) {
       case 'pre-flop':
+      case 'preflop':
         return [];
       case 'flop':
         return communityCards.slice(0, 3);
@@ -82,7 +83,7 @@ const CommunityCards = ({
       <div className="community-cards-container">
         <div className="cards-title">
           {gamePhase === 'waiting' && '🎰 Esperando inicio...'}
-          {gamePhase === 'pre-flop' && '🎲 Pre-Flop'}
+          {(gamePhase === 'pre-flop' || gamePhase === 'preflop') && '🎲 Pre-Flop'}
           {gamePhase === 'flop' && '🃏 Flop'}
           {gamePhase === 'turn' && '🎴 Turn'}
           {gamePhase === 'river' && '🎯 River'}
@@ -125,7 +126,7 @@ const CommunityCards = ({
 
         {/* Phase indicator */}
         <div className="phase-indicator">
-          <div className={`phase-dot ${gamePhase === 'pre-flop' ? 'active' : ''}`}></div>
+          <div className={`phase-dot ${(gamePhase === 'pre-flop' || gamePhase === 'preflop') ? 'active' : ''}`}></div>
           <div className={`phase-dot ${gamePhase === 'flop' ? 'active' : ''}`}></div>
           <div className={`phase-dot ${gamePhase === 'turn' ? 'active' : ''}`}></div>
           <div className={`phase-dot ${gamePhase === 'river' ? 'active' : ''}`}></div>

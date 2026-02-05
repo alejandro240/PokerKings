@@ -1,7 +1,7 @@
 // Poker game logic engine
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-const SUITS = ['♠', '♥', '♦', '♣'];
+const SUITS = ['S', 'H', 'D', 'C'];
 
 export class PokerEngine {
   constructor() {

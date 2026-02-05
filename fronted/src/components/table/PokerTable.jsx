@@ -24,6 +24,7 @@ function PokerTable({
     // Normalizar formato: "10H" debe quedar como "10H", "Ah" como "AH"
     let rank = card.slice(0, -1).toUpperCase();
     let suit = card.slice(-1).toUpperCase();
+
     
     // Asegurar que rank esté en el formato correcto
     const validRanks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -41,6 +42,7 @@ function PokerTable({
   const getVisibleCards = () => {
     switch (gamePhase) {
       case 'pre-flop':
+      case 'preflop':
         return [];
       case 'flop':
         return communityCards.slice(0, 3);

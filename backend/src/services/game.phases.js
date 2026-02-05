@@ -172,13 +172,12 @@ export const generateCommunityCards = (deck) => {
  * "AH" -> { rank: 'A', suit: 'H' }
  */
 export const parseCard = (cardString) => {
-  const suits = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' };
   const suitChar = cardString.charAt(cardString.length - 1);
   const rank = cardString.substring(0, cardString.length - 1);
   
   return {
     rank,
-    suit: suits[suitChar] || suitChar
+    suit: suitChar
   };
 };
 

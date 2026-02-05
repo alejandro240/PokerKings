@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import PokerTable from '../components/table/PokerTable';
-import BettingActions from '../components/table/BettingActions';
-import usePokerGame from '../hooks/usePokerGame';
+import PokerTable from '../../components/table/PokerTable';
+import BettingActions from '../../components/table/BettingActions';
+import usePokerGame from '../usePokerGame';
 import './TablePage.css';
 
 function TablePage({ table, user, onNavigate }) {
@@ -23,10 +23,12 @@ function TablePage({ table, user, onNavigate }) {
       // Agregar el usuario actual como primer jugador
       if (user && !isSpectator) {
         initialPlayers.push({
+          id: user.id || user.username, // ID único del jugador
           username: user.username,
           chips: user.chips || 5000,
           avatar: user.avatar && user.avatar !== 'default-avatar.png' ? user.avatar : '🎮',
-          level: user.level || 1
+          level: user.level || 1,
+          cards: [] // Las cartas vendrán del backend
         });
       }
       
@@ -34,10 +36,12 @@ function TablePage({ table, user, onNavigate }) {
       if (table.botsCount) {
         for (let i = 0; i < table.botsCount; i++) {
           initialPlayers.push({
+            id: `bot-${i + 1}`, // ID único del bot
             username: `Bot ${i + 1}`,
             chips: 5000,
             avatar: '🤖',
-            level: Math.floor(Math.random() * 20) + 1 // Nivel aleatorio entre 1-20
+            level: Math.floor(Math.random() * 20) + 1, // Nivel aleatorio entre 1-20
+            cards: [] // Las cartas vendrán del backend
           });
         }
       }
@@ -52,13 +56,13 @@ function TablePage({ table, user, onNavigate }) {
       // Inicializar el juego cuando hay suficientes jugadores
       const activePlayers = initialPlayers.filter(p => p !== null);
       if (activePlayers.length >= 2) {
-        // Determinar el índice del jugador actual
-        const playerIndex = activePlayers.findIndex(p => p.username === user?.username);
+        // Determinar el índice del jugador actual en el array COMPLETO (con nulls)
+        const playerIndex = initialPlayers.findIndex(p => p && p.username === user?.username);
         
-        // Iniciar juego (después el backend enviará esto)
+        // Iniciar juego con el array COMPLETO (incluyendo nulls) (después el backend enviará esto)
         setTimeout(() => {
           pokerGame.startNewGame(
-            activePlayers, 
+            initialPlayers,  // Array completo con nulls
             playerIndex >= 0 ? playerIndex : 0,
             table.smallBlind || 50,
             table.bigBlind || 100
@@ -250,7 +254,8 @@ function TablePage({ table, user, onNavigate }) {
       {/* Mesa de poker con cartas comunitarias */}
       <PokerTable 
         maxPlayers={table.maxPlayers}
-        players={players}
+        players={pokerGame.players.length > 0 ? pokerGame.players : players}
+        currentPlayerId={user?.id || user?.username} // ID del usuario actual
         tableColor={table.tableColor}
         dealerPosition={pokerGame.dealerPosition}
         smallBlindPosition={pokerGame.smallBlindPosition}

@@ -11,7 +11,8 @@ function PokerTable({
   communityCards = [],
   gamePhase = 'waiting',
   pot = 0,
-  sidePots = []
+  sidePots = [],
+  currentPlayerId = null // ID del jugador que está viendo la mesa
 }) {
   // Estado para rastrear qué cartas ya fueron reveladas
   const [revealedCards, setRevealedCards] = useState([]);
@@ -80,28 +81,28 @@ function PokerTable({
   // Posiciones de los asientos alrededor de la mesa según el número máximo
   const seatPositions = {
     4: [
-      { top: '2%', left: '50%', transform: 'translateX(-50%)' }, // Arriba
-      { top: '50%', right: '1%', transform: 'translateY(-50%)' }, // Derecha
-      { bottom: '2%', left: '50%', transform: 'translateX(-50%)' }, // Abajo
-      { top: '50%', left: '1%', transform: 'translateY(-50%)' }  // Izquierda
+      { top: '1%', left: '50%', transform: 'translateX(-50%)' },       // Arriba
+      { top: '50%', right: '2%', transform: 'translateY(-50%)' },      // Derecha
+      { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },    // Abajo
+      { top: '50%', left: '2%', transform: 'translateY(-50%)' }        // Izquierda
     ],
     6: [
-      { top: '1%', left: '50%', transform: 'translateX(-50%)' },     // Arriba centro
-      { top: '20%', right: '1%', transform: 'translateY(-50%)' },    // Arriba derecha
-      { bottom: '20%', right: '1%', transform: 'translateY(50%)' },  // Abajo derecha
-      { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },  // Abajo centro
-      { bottom: '20%', left: '1%', transform: 'translateY(50%)' },   // Abajo izquierda
-      { top: '20%', left: '1%', transform: 'translateY(-50%)' }      // Arriba izquierda
+      { top: '1%', left: '50%', transform: 'translateX(-50%)' },       // Arriba centro
+      { top: '4%', right: '12%' },                                     // Arriba derecha
+      { bottom: '4%', right: '12%' },                                  // Abajo derecha
+      { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },    // Abajo centro
+      { bottom: '4%', left: '12%' },                                   // Abajo izquierda
+      { top: '4%', left: '12%' }                                       // Arriba izquierda
     ],
     8: [
-      { top: '0%', left: '50%', transform: 'translateX(-50%)' },     // Arriba centro
-      { top: '8%', right: '8%' },                                    // Arriba derecha
-      { top: '50%', right: '0%', transform: 'translateY(-50%)' },    // Centro derecha
-      { bottom: '8%', right: '8%' },                                 // Abajo derecha
-      { bottom: '0%', left: '50%', transform: 'translateX(-50%)' },  // Abajo centro
-      { bottom: '8%', left: '8%' },                                  // Abajo izquierda
-      { top: '50%', left: '0%', transform: 'translateY(-50%)' },     // Centro izquierda
-      { top: '8%', left: '8%' }                                      // Arriba izquierda
+      { top: '1%', left: '50%', transform: 'translateX(-50%)' },       // Arriba centro
+      { top: '4%', right: '12%' },                                     // Arriba derecha
+      { bottom: '4%', right: '12%' },                                  // Abajo derecha
+      { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },    // Abajo centro
+      { bottom: '4%', left: '12%' },                                   // Abajo izquierda
+      { top: '4%', left: '12%' },                                      // Arriba izquierda
+      { top: '50%', left: '0.5%', transform: 'translateY(-50%)' },     // Centro izquierda
+      { top: '50%', right: '0.5%', transform: 'translateY(-50%)' }     // Centro derecha
     ]
   };
 
@@ -183,6 +184,7 @@ function PokerTable({
       {Array.from({ length: maxPlayers }).map((_, index) => {
         const player = players[index];
         const position = positions[index];
+        const isCurrentPlayer = currentPlayerId && player && player.id === currentPlayerId;
 
         return (
           <div 
@@ -191,33 +193,62 @@ function PokerTable({
             style={position}
           >
             {player ? (
-              <div className="player-info">
-                {/* Position Indicators */}
-                {dealerPosition === index && (
-                  <div className="position-badge dealer-badge">D</div>
-                )}
-                {smallBlindPosition === index && (
-                  <div className="position-badge sb-badge">SB</div>
-                )}
-                {bigBlindPosition === index && (
-                  <div className="position-badge bb-badge">BB</div>
-                )}
-                
-                <div className="player-header">
-                  <div className="player-avatar">{player.avatar || '👤'}</div>
-                  <div className="player-level">🎖️ Nv {player.level || 1}</div>
-                </div>
-                <div className="player-name">{player.username}</div>
-                <div className="player-balance">
-                  <span className="pk-coin">🪙</span>
-                  <span className="balance-amount">{(player.chips || 0).toLocaleString()} PK</span>
-                </div>
+              <>
+                {/* Cartas del jugador - ARRIBA del player-info */}
                 <div className="player-cards">
-                  {/* Cartas del jugador */}
-                  <div className="card">🂠</div>
-                  <div className="card">🂠</div>
+                  {isCurrentPlayer && player.cards && player.cards.length > 0 ? (
+                    // Mostrar cartas reveladas para el jugador actual
+                    player.cards.map((card, cardIndex) => {
+                      const cardImage = getCardImage(card);
+                      return (
+                        <div key={cardIndex} className="player-card-revealed">
+                          {cardImage ? (
+                            <img src={cardImage} alt={card} />
+                          ) : (
+                            <div className="card-placeholder">?</div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : isCurrentPlayer ? (
+                    // Jugador actual sin cartas asignadas (esperando)
+                    <>
+                      <div className="player-card">🂠</div>
+                      <div className="player-card">🂠</div>
+                    </>
+                  ) : (
+                    // Mostrar cartas ocultas para otros jugadores
+                    <>
+                      <div className="player-card">🂠</div>
+                      <div className="player-card">🂠</div>
+                    </>
+                  )}
                 </div>
-              </div>
+
+                {/* Info del jugador - DEBAJO de las cartas */}
+                <div className="player-info">
+                  {/* Position Indicators */}
+                  {dealerPosition === index && (
+                    <div className="position-badge dealer-badge">D</div>
+                  )}
+                  {smallBlindPosition === index && (
+                    <div className="position-badge sb-badge">SB</div>
+                  )}
+                  {bigBlindPosition === index && (
+                    <div className="position-badge bb-badge">BB</div>
+                  )}
+                  
+                  <div className="player-header">
+                    <div className="player-avatar">{player.avatar || '👤'}</div>
+                    <div className="player-level">🎖️ Nv {player.level || 1}</div>
+                  </div>
+                  <div className="player-name">{player.username}</div>
+                  <div className="player-balance">
+                    <span className="pk-coin">🪙</span>
+                    <span className="balance-amount">{(player.chips || 0).toLocaleString()} PK</span>
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="empty-seat">
                 <div className="empty-seat-icon">+</div>

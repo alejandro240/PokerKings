@@ -122,18 +122,45 @@ const usePokerGame = () => {
     setDealerPosition(0);
     setSmallBlindPosition(1);
     setBigBlindPosition(2);
-    setCurrentPlayerTurn((2 + 1) % initialPlayers.length); // First to act after big blind
+    
+    // Count active players for turn calculation
+    const activePlayersCount = initialPlayers.filter(p => p !== null).length;
+    setCurrentPlayerTurn((2 + 1) % activePlayersCount); // First to act after big blind
+    
+    // Cartas de ejemplo para cada jugador (temporal - el backend enviar\u00e1 las reales)
+    const exampleCards = [
+      ['AH', 'KS'],
+      ['QH', 'QC'],
+      ['JD', 'JS'],
+      ['10H', '10D'],
+      ['9S', '9C'],
+      ['8H', '8D'],
+      ['7C', '7S'],
+      ['6H', '6D']
+    ];
+    
+    // Asignar cartas a los jugadores
+    const playersWithCards = initialPlayers.map((player, index) => {
+      if (player) {
+        return {
+          ...player,
+          cards: exampleCards[index] || ['2H', '2D']
+        };
+      }
+      return null; // Mantener null para asientos vacíos
+    });
     
     // Set player state
-    setPlayerHoleCards([]);
+    setPlayerHoleCards(exampleCards[playerIndex] || []);
     setPlayerBet(playerIndex === 1 ? smallBlind : playerIndex === 2 ? bigBlind : 0);
     setPlayerHasFolded(false);
     setPlayerHasActed(false);
     
     // Set all players
-    setPlayers(initialPlayers);
+    setPlayers(playersWithCards);
     
-    console.log('New game started');
+    console.log('New game started with players:', playersWithCards);
+    console.log('Current player index:', playerIndex);
   }, []);
 
   // Update community cards (backend will send)

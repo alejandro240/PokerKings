@@ -211,8 +211,12 @@
 /* Asientos de jugadores */
 .player-seat {
   position: absolute;
-  width: 180px;
+  width: auto;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .player-seat.occupied .player-info {
@@ -226,6 +230,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 180px;
+  flex-shrink: 0;
 }
 
 .player-seat.occupied .player-info:hover {
@@ -335,21 +341,50 @@
 
 .player-cards {
   display: flex;
-  gap: 4px;
-  justify-content: flex-start;
-  margin-top: 2px;
+  gap: 3px;
+  flex-direction: row;
+  flex-shrink: 0;
 }
 
-.card {
-  width: 28px;
-  height: 40px;
-  background: white;
-  border-radius: 3px;
+/* Cartas ocultas del jugador */
+.player-card {
+  width: 60px;
+  height: 85px;
+  background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
+  border: 2px solid rgba(218, 165, 32, 0.5);
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  font-size: 2.5rem;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+  color: rgba(218, 165, 32, 0.4);
+}
+
+/* Cartas reveladas del jugador */
+.player-card-revealed {
+  width: 60px;
+  height: 85px;
+  background: white;
+  border: 2px solid rgba(218, 165, 32, 0.8);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.player-card-revealed img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-placeholder {
+  font-size: 2rem;
+  color: rgba(218, 165, 32, 0.5);
+  font-weight: bold;
 }
 
 /* Asiento vacío */
@@ -387,7 +422,7 @@
     padding: 1rem;
   }
 
-  .player-seat {
+  .player-seat.occupied .player-info {
     width: 150px;
   }
 
@@ -416,10 +451,15 @@
     font-size: 0.7rem;
   }
 
-  .card {
-    width: 22px;
-    height: 32px;
-    font-size: 1rem;
+  .player-card,
+  .player-card-revealed {
+    width: 45px;
+    height: 65px;
+    font-size: 2rem;
+  }
+
+  .player-cards {
+    gap: 2px;
   }
 
   /* Cartas comunitarias en móvil */

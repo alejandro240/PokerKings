@@ -3,58 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ejemplo Giro de Cartas - PokerKings</title>
+  <title>Mesa de Poker 6 Jugadores - PokerKings</title>
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      padding: 40px;
+      padding: 20px;
       background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 100%);
       font-family: Arial, sans-serif;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 30px;
-      min-height: 100vh;
+      gap: 20px;
     }
 
     h1 {
       color: #daa520;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      font-size: 1.8rem;
+      text-align: center;
     }
 
-    .demo-container {
+    /* Contenedor de la mesa */
+    .poker-table-container {
+      position: relative;
+      width: 100%;
+      max-width: 1200px;
+      height: 700px;
+      margin: 0 auto;
+    }
+
+    /* Mesa de poker */
+    .poker-table {
+      position: relative;
+      width: 100%;
+      height: 100%;
       display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
+      align-items: center;
       justify-content: center;
+    }
+
+    .table-image {
+      width: 80%;
+      height: auto;
+      max-height: 90%;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+    }
+
+    /* Cartas comunitarias */
+    .community-cards-on-table {
+      position: absolute;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
       perspective: 1000px;
     }
 
-    .card {
+    .cards-row-table {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .community-card-table {
       width: 70px;
       height: 100px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
       position: relative;
       transform-style: preserve-3d;
-      cursor: pointer;
     }
 
-    /* Contenedor interno con dos caras */
-    .card-inner {
+    .card-inner-table {
       position: relative;
       width: 100%;
       height: 100%;
       transition: transform 1.2s ease-in-out;
       transform-style: preserve-3d;
+      transform: rotateY(0deg);
     }
 
-    .card.revealing .card-inner {
+    .community-card-table.revealed .card-inner-table {
       transform: rotateY(180deg);
     }
 
-    /* Cara frontal y trasera */
-    .card-front, .card-back {
+    .card-front-table, .card-back-table {
       position: absolute;
       width: 100%;
       height: 100%;
@@ -65,8 +106,7 @@
       justify-content: center;
     }
 
-    /* Reverso de la carta (🂠) */
-    .card-back {
+    .card-back-table {
       background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
       border: 2px solid rgba(218, 165, 32, 0.5);
       color: rgba(218, 165, 32, 0.4);
@@ -74,26 +114,266 @@
       transform: rotateY(0deg);
     }
 
-    /* Frente de la carta (imagen) */
-    .card-front {
+    .card-front-table {
       background: white;
       transform: rotateY(180deg);
       overflow: hidden;
     }
 
-    .card-front img {
+    .card-front-table img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      border-radius: 8px;
+    }
+
+    /* Pot container */
+    .pot-container {
+      position: absolute;
+      top: 58%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .pot-amount {
+      background: linear-gradient(135deg, #daa520 0%, #b8941e 100%);
+      color: #0a0e27;
+      font-weight: bold;
+      font-size: 0.95rem;
+      padding: 6px 24px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(218, 165, 32, 0.5);
+      border: 2px solid #ffd700;
+      min-width: 130px;
+      text-align: center;
+    }
+
+    /* Asientos de jugadores */
+    .player-seat {
+      position: absolute;
+      width: auto;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .player-info {
+      position: relative;
+      background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
+      border: 3px solid #daa520;
+      border-radius: 12px;
+      padding: 8px 10px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+      width: 180px;
+    }
+
+    .player-info:hover {
+      border-color: #ffd700;
+      box-shadow: 0 8px 30px rgba(218, 165, 32, 0.4);
+      transform: scale(1.05);
+    }
+
+    /* Position Badges */
+    .position-badge {
+      position: absolute;
+      top: -15px;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      border: 3px solid;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      z-index: 20;
+    }
+
+    .dealer-badge {
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+      border-color: #daa520;
+      color: #0a0e27;
+    }
+
+    .sb-badge {
+      right: -10px;
+      background: linear-gradient(135deg, #5ca0ff 0%, #3b82c7 100%);
+      border-color: #1e40af;
+      color: white;
+    }
+
+    .bb-badge {
+      left: -10px;
+      background: linear-gradient(135deg, #ff6b6b 0%, #c41e3a 100%);
+      border-color: #8b1426;
+      color: white;
+    }
+
+    .player-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .player-avatar {
+      font-size: 2rem;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+      flex-shrink: 0;
+    }
+
+    .player-level {
+      background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+      color: #0a0e27;
+      font-size: 0.65rem;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(218, 165, 32, 0.4);
+      white-space: nowrap;
+    }
+
+    .player-name {
+      color: #daa520;
+      font-weight: bold;
+      font-size: 0.85rem;
+      text-align: left;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-balance {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 4px;
+      background: rgba(10, 14, 39, 0.6);
+      border: 2px solid rgba(218, 165, 32, 0.3);
+      border-radius: 8px;
+      padding: 3px 8px;
+    }
+
+    .pk-coin {
+      font-size: 0.9rem;
+      filter: drop-shadow(0 2px 4px rgba(218, 165, 32, 0.6));
+    }
+
+    .balance-amount {
+      color: #ffd700;
+      font-weight: bold;
+      font-size: 0.8rem;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    }
+
+    .player-cards {
+      display: flex;
+      gap: 3px;
+      flex-direction: row;
+      flex-shrink: 0;
+    }
+
+    .player-card {
+      width: 60px;
+      height: 85px;
+      background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
+      border: 2px solid rgba(218, 165, 32, 0.5);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+      color: rgba(218, 165, 32, 0.4);
+    }
+
+    /* Cartas reveladas del jugador */
+    .player-card-revealed {
+      width: 60px;
+      height: 85px;
+      background: white;
+      border: 2px solid rgba(218, 165, 32, 0.8);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .player-card-revealed img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Asiento vacío */
+    .empty-seat {
+      background: rgba(15, 52, 96, 0.3);
+      border: 2px dashed rgba(218, 165, 32, 0.4);
+      border-radius: 15px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .empty-seat:hover {
+      background: rgba(15, 52, 96, 0.5);
+      border-color: rgba(218, 165, 32, 0.7);
+      transform: scale(1.05);
+    }
+
+    .empty-seat-icon {
+      font-size: 2rem;
+      color: #daa520;
+      margin-bottom: 5px;
+    }
+
+    .empty-seat-text {
+      color: #a0a0a0;
+      font-size: 0.85rem;
+    }
+
+    /* Controles */
+    .controls {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 800px;
+    }
+
+    .perspective-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 700px;
     }
 
     button {
       background: linear-gradient(135deg, #daa520 0%, #b8941e 100%);
       color: #0a0e27;
       border: 2px solid #ffd700;
-      padding: 12px 30px;
+      padding: 12px 24px;
       border-radius: 10px;
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: bold;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -105,85 +385,415 @@
       box-shadow: 0 6px 20px rgba(218, 165, 32, 0.5);
     }
 
+    button:active {
+      transform: translateY(0);
+    }
+
+    .btn-perspective {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      background: linear-gradient(135deg, #5ca0ff 0%, #3b82c7 100%);
+      border-color: #1e40af;
+    }
+
+    .btn-perspective.active {
+      background: linear-gradient(135deg, #ff6b6b 0%, #c41e3a 100%);
+      border-color: #8b1426;
+      box-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
+    }
+
     .info {
       color: #e0e0e0;
       text-align: center;
-      max-width: 600px;
+      max-width: 700px;
       line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .phase-indicator {
+      background: rgba(218, 165, 32, 0.2);
+      border: 2px solid #daa520;
+      color: #ffd700;
+      padding: 8px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1.1rem;
     }
   </style>
 </head>
 <body>
-  <h1>🎰 Ejemplo de Giro de Cartas</h1>
+  <h1>🎰 Mesa de Poker - 8 Jugadores</h1>
   
   <div class="info">
-    <p>Las cartas aparecerán con una animación de giro 3D (rotateY) cuando se revelen.</p>
-    <p>Haz clic en el botón para ver la animación en acción.</p>
+    <p>Simulación de una partida de poker con 8 jugadores. Cada jugador ve solo sus propias cartas.</p>
+    <p><strong>Cambia de perspectiva para ver cómo cada jugador ve la mesa.</strong></p>
   </div>
 
-  <button onclick="revelarCartas()">🎴 Revelar Cartas (Flop)</button>
+  <div class="perspective-controls">
+    <button class="btn-perspective active" onclick="cambiarPerspectiva(1)">Ver como Jugador 1</button>
+    <button class="btn-perspective" onclick="cambiarPerspectiva(2)">Ver como Jugador 2</button>
+    <button class="btn-perspective" onclick="cambiarPerspectiva(3)">Ver como Jugador 3</button>
+    <button class="btn-perspective" onclick="cambiarPerspectiva(4)">Ver como Jugador 4</button>
+    <button class="btn-perspective" onclick="cambiarPerspectiva(5)">Ver como Jugador 5</button>
+    <button class="btn-perspective" onclick="cambiarPerspectiva(6)">Ver como Jugador 6</button>
+    <button class="btn-perspective" onclick="cambiarPerspectiva(7)">Ver como Jugador 7</button>
+    <button class="btn-perspective" onclick="cambiarPerspectiva(8)">Ver como Jugador 8</button>
+  </div>
 
-  <div class="demo-container">
-    <div class="card" id="card1">
-      <div class="card-inner">
-        <div class="card-back">🂠</div>
-        <div class="card-front"><img src="./public/assets/images/AS.png" alt="AS"></div>
+  <div class="phase-indicator" id="phaseIndicator">Fase: Esperando</div>
+
+  <div class="controls">
+    <button onclick="iniciarMano()">🎴 Nueva Mano</button>
+    <button onclick="revelarFlop()">📊 Flop (3 cartas)</button>
+    <button onclick="revelarTurn()">🔄 Turn (4ta carta)</button>
+    <button onclick="revelarRiver()">🌊 River (5ta carta)</button>
+    <button onclick="resetearMesa()">🔄 Resetear Mesa</button>
+  </div>
+
+  <!-- Mesa de poker -->
+  <div class="poker-table-container">
+    <div class="poker-table">
+      <img 
+        src="./public/assets/images/mesa-poker.png" 
+        alt="Mesa de Poker" 
+        class="table-image"
+      />
+      
+      <!-- Cartas comunitarias -->
+      <div class="community-cards-on-table">
+        <div class="cards-row-table" id="communityCards">
+          <!-- Las 5 cartas se agregarán dinámicamente -->
+        </div>
+      </div>
+
+      <!-- Pot -->
+      <div class="pot-container">
+        <div class="pot-amount" id="potAmount">💰 1,250 PK</div>
       </div>
     </div>
-    <div class="card" id="card2">
-      <div class="card-inner">
-        <div class="card-back">🂠</div>
-        <div class="card-front"><img src="./public/assets/images/KH.png" alt="KH"></div>
+
+    <!-- Jugador 1 - Arriba centro -->
+    <div class="player-seat" style="top: 1%; left: 50%; transform: translateX(-50%); flex-direction: column;" id="player-1">
+      <div class="player-cards" id="cards-1">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="position-badge dealer-badge">D</div>
+        <div class="player-header">
+          <div class="player-avatar">👨</div>
+          <div class="player-level">🎖️ Nv 5</div>
+        </div>
+        <div class="player-name">Jugador1</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">2,500 PK</span>
+        </div>
       </div>
     </div>
-    <div class="card" id="card3">
-      <div class="card-inner">
-        <div class="card-back">🂠</div>
-        <div class="card-front"><img src="./public/assets/images/QD.png" alt="QD"></div>
+
+    <!-- Jugador 2 - Arriba derecha -->
+    <div class="player-seat" style="top: 4%; right: 12%; flex-direction: column;" id="player-2">
+      <div class="player-cards" id="cards-2">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="position-badge sb-badge">SB</div>
+        <div class="player-header">
+          <div class="player-avatar">👩</div>
+          <div class="player-level">🎖️ Nv 3</div>
+        </div>
+        <div class="player-name">Jugador2</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">1,800 PK</span>
+        </div>
       </div>
     </div>
-    <div class="card" id="card4">
-      <div class="card-inner">
-        <div class="card-back">🂠</div>
-        <div class="card-front"><img src="./public/assets/images/JC.png" alt="JC"></div>
+
+    <!-- Jugador 3 - Abajo derecha -->
+    <div class="player-seat" style="bottom: 4%; right: 12%; flex-direction: column;" id="player-3">
+      <div class="player-cards" id="cards-3">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="position-badge bb-badge">BB</div>
+        <div class="player-header">
+          <div class="player-avatar">🧑</div>
+          <div class="player-level">🎖️ Nv 7</div>
+        </div>
+        <div class="player-name">Jugador3</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">3,200 PK</span>
+        </div>
       </div>
     </div>
-    <div class="card" id="card5">
-      <div class="card-inner">
-        <div class="card-back">🂠</div>
-        <div class="card-front"><img src="./public/assets/images/10S.png" alt="10S"></div>
+
+    <!-- Jugador 4 - Abajo centro -->
+    <div class="player-seat" style="bottom: 1%; left: 50%; transform: translateX(-50%); flex-direction: column;" id="player-4">
+      <div class="player-cards" id="cards-4">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="player-header">
+          <div class="player-avatar">👤</div>
+          <div class="player-level">🎖️ Nv 2</div>
+        </div>
+        <div class="player-name">Jugador4</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">5,000 PK</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jugador 5 - Abajo izquierda -->
+    <div class="player-seat" style="bottom: 4%; left: 12%; flex-direction: column;" id="player-5">
+      <div class="player-cards" id="cards-5">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="player-header">
+          <div class="player-avatar">🧔</div>
+          <div class="player-level">🎖️ Nv 4</div>
+        </div>
+        <div class="player-name">Jugador5</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">2,100 PK</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jugador 6 - Arriba izquierda -->
+    <div class="player-seat" style="top: 4%; left: 12%; flex-direction: column;" id="player-6">
+      <div class="player-cards" id="cards-6">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="player-header">
+          <div class="player-avatar">👨‍🦰</div>
+          <div class="player-level">🎖️ Nv 6</div>
+        </div>
+        <div class="player-name">Jugador6</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">1,950 PK</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jugador 7 - Centro izquierda -->
+    <div class="player-seat" style="top: 50%; left: 0.5%; transform: translateY(-50%); flex-direction: column;" id="player-7">
+      <div class="player-cards" id="cards-7">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="player-header">
+          <div class="player-avatar">👩‍🦱</div>
+          <div class="player-level">🎖️ Nv 4</div>
+        </div>
+        <div class="player-name">Jugador7</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">3,400 PK</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jugador 8 - Centro derecha -->
+    <div class="player-seat" style="top: 50%; right: 0.5%; transform: translateY(-50%); flex-direction: column;" id="player-8">
+      <div class="player-cards" id="cards-8">
+        <!-- Cartas se llenan dinámicamente -->
+      </div>
+      <div class="player-info">
+        <div class="player-header">
+          <div class="player-avatar">🧑‍🦲</div>
+          <div class="player-level">🎖️ Nv 8</div>
+        </div>
+        <div class="player-name">Jugador8</div>
+        <div class="player-balance">
+          <span class="pk-coin">🪙</span>
+          <span class="balance-amount">2,750 PK</span>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    let cartasReveladas = 0;
+    // Cartas disponibles para la simulación comunitaria
+    const availableCards = ['AS', 'KH', 'QD', 'JC', '10S'];
+    let revealedCardsCount = 0;
+    let currentPhase = 'waiting';
+    let currentPerspective = 1; // Jugador activo viendo la mesa
 
-    function revelarCartas() {
-      if (cartasReveladas >= 5) {
-        // Reset - quitar clase revealing de todas
-        cartasReveladas = 0;
-        for (let i = 1; i <= 5; i++) {
-          const card = document.getElementById('card' + i);
-          card.classList.remove('revealing');
+    // Cartas de cada jugador (mano privada)
+    const playerHands = {
+      1: ['AH', 'KS'],  // Jugador 1
+      2: ['QH', 'QC'],  // Jugador 2
+      3: ['JD', 'JS'],  // Jugador 3
+      4: ['10H', '10D'], // Jugador 4
+      5: ['9S', '9C'],  // Jugador 5
+      6: ['8H', '8D'],   // Jugador 6
+      7: ['7C', '7S'],  // Jugador 7
+      8: ['6H', '6D']   // Jugador 8
+    };
+
+    function updatePhase(phase) {
+      currentPhase = phase;
+      document.getElementById('phaseIndicator').textContent = `Fase: ${phase}`;
+    }
+
+    function createCommunityCard(cardName, index) {
+      return `
+        <div class="community-card-table" id="card${index}">
+          <div class="card-inner-table">
+            <div class="card-back-table">🂠</div>
+            <div class="card-front-table">
+              <img src="./public/assets/images/${cardName}.png" alt="${cardName}">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function cambiarPerspectiva(playerNum) {
+      currentPerspective = playerNum;
+      
+      // Actualizar botones activos
+      document.querySelectorAll('.btn-perspective').forEach((btn, index) => {
+        if (index + 1 === playerNum) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
         }
+      });
+
+      // Actualizar cartas de todos los jugadores
+      for (let i = 1; i <= 8; i++) {
+        const cardsContainer = document.getElementById(`cards-${i}`);
+        const hand = playerHands[i];
+        
+        if (i === playerNum) {
+          // Mostrar cartas del jugador activo (reveladas) - apiladas verticalmente
+          cardsContainer.innerHTML = `
+            <div class="player-card-revealed">
+              <img src="./public/assets/images/${hand[0]}.png" alt="${hand[0]}">
+            </div>
+            <div class="player-card-revealed">
+              <img src="./public/assets/images/${hand[1]}.png" alt="${hand[1]}">
+            </div>
+          `;
+        } else {
+          // Ocultar cartas de los demás jugadores - apiladas verticalmente
+          cardsContainer.innerHTML = `
+            <div class="player-card">🂠</div>
+            <div class="player-card">🂠</div>
+          `;
+        }
+      }
+    }
+
+    function iniciarMano() {
+      // Limpiar cartas anteriores
+      const container = document.getElementById('communityCards');
+      container.innerHTML = '';
+      
+      // Crear 5 cartas boca abajo
+      for (let i = 0; i < 5; i++) {
+        container.innerHTML += createCommunityCard(availableCards[i], i);
+      }
+      
+      revealedCardsCount = 0;
+      updatePhase('Pre-Flop');
+      
+      // Actualizar pot
+      document.getElementById('potAmount').textContent = '💰 150 PK';
+    }
+
+    function revelarFlop() {
+      if (revealedCardsCount > 0) {
+        alert('El Flop ya fue revelado. Usa Turn o River.');
+        return;
+      }
+      
+      if (currentPhase === 'waiting') {
+        alert('Primero inicia una nueva mano.');
         return;
       }
 
-      const numCartas = cartasReveladas === 0 ? 3 : 1; // Flop = 3, Turn/River = 1
+      updatePhase('Flop');
       
-      for (let i = 0; i < numCartas && cartasReveladas < 5; i++) {
+      // Revelar 3 cartas con delay
+      for (let i = 0; i < 3; i++) {
         setTimeout(() => {
-          const cardIndex = cartasReveladas;
-          const card = document.getElementById('card' + (cardIndex + 1));
-          
-          // Añadir clase para iniciar el giro
-          card.classList.add('revealing');
-          
-          cartasReveladas++;
-        }, i * 400); // Delay entre cada carta
+          const card = document.getElementById(`card${i}`);
+          if (card) {
+            card.classList.add('revealed');
+            revealedCardsCount++;
+          }
+        }, i * 400);
       }
+      
+      // Actualizar pot
+      setTimeout(() => {
+        document.getElementById('potAmount').textContent = '💰 450 PK';
+      }, 1200);
     }
+
+    function revelarTurn() {
+      if (revealedCardsCount !== 3) {
+        alert('Primero revela el Flop (3 cartas).');
+        return;
+      }
+
+      updatePhase('Turn');
+      
+      const card = document.getElementById('card3');
+      if (card) {
+        card.classList.add('revealed');
+        revealedCardsCount++;
+      }
+      
+      // Actualizar pot
+      setTimeout(() => {
+        document.getElementById('potAmount').textContent = '💰 850 PK';
+      }, 400);
+    }
+
+    function revelarRiver() {
+      if (revealedCardsCount !== 4) {
+        alert('Primero revela el Turn (4ta carta).');
+        return;
+      }
+
+      updatePhase('River');
+      
+      const card = document.getElementById('card4');
+      if (card) {
+        card.classList.add('revealed');
+        revealedCardsCount++;
+      }
+      
+      // Actualizar pot
+      setTimeout(() => {
+        document.getElementById('potAmount').textContent = '💰 1,250 PK';
+      }, 400);
+    }
+
+    function resetearMesa() {
+      const container = document.getElementById('communityCards');
+      container.innerHTML = '';
+      revealedCardsCount = 0;
+      updatePhase('Esperando');
+      document.getElementById('potAmount').textContent = '💰 0 PK';
+    }
+
+    // Inicializar con una mano al cargar
+    window.onload = function() {
+      iniciarMano();
+      cambiarPerspectiva(1); // Vista del Jugador 1 por defecto
+    };
   </script>
 </body>
 </html>

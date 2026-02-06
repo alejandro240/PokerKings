@@ -1,11 +1,8 @@
 import React from 'react';
 
 function InvitacionesOffcanvas({ show, onHide }) {
-  // Ejemplo de invitaciones (después vendrán del backend)
-  const invitaciones = [
-    { id: 1, tipo: 'amistad', de: 'Pedro_Poker', mensaje: 'Te ha enviado una solicitud de amistad' },
-    { id: 2, tipo: 'mesa', de: 'Carlos23', mensaje: 'Te invita a su mesa de poker' },
-  ];
+  // Lista de invitaciones (vendrá del backend)
+  const invitaciones = [];
 
   const handleAceptar = (id) => {
     // Aquí después pondrás la lógica para aceptar invitación

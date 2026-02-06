@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Toaster } from 'react-hot-toast'
 import Navbar from './components/layout/Navbar'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
@@ -7,6 +8,7 @@ import LobbyPage from './pages/LobbyPage'
 import CreateTablePage from './pages/CreateTablePage'
 import TablePage from './pages/TablePage'
 import './App.css'
+import './styles/animations.css'
 import { authService } from './services/auth'
 import { tableAPI } from './services/api'
 
@@ -29,16 +31,13 @@ function App() {
         const currentUser = authService.getCurrentUser()
         if (currentUser) {
           setUser(currentUser)
-          
-          // Cargar mesas disponibles
-          const tablesResponse = await tableAPI.getAllTables()
-          setTables(tablesResponse.data || [])
+          // Las mesas se cargarán bajo demanda cuando el usuario vaya al lobby
+          setTables([])
         } else {
           setTables([])
         }
       } catch (err) {
         console.error('Error cargando datos:', err)
-        setError(err.message)
       } finally {
         setLoading(false)
       }
@@ -50,14 +49,8 @@ function App() {
   // Función cuando el login es exitoso
   const handleLoginSuccess = async (loggedUser) => {
     setUser(loggedUser)
-    
-    // Cargar mesas después del login
-    try {
-      const tablesResponse = await tableAPI.getAllTables()
-      setTables(tablesResponse.data || [])
-    } catch (err) {
-      console.error('Error cargando mesas:', err)
-    }
+    // Las mesas se mostrarán desde LobbyPage (datos de ejemplo)
+    setTables([])
   }
 
   // Función cuando el registro es exitoso
@@ -109,23 +102,37 @@ function App() {
         botsCount: formData.bots
       }
       
-      const response = await tableAPI.createTable(tableData)
-      
-      // Establecer la mesa creada como mesa actual
-      setCurrentTable({
-        ...response.data,
-        players: [user], // El creador es el primer jugador
-        botsCount: formData.bots
-      })
-      
-      setCurrentView('table')
-      
-      // Recargar lista de mesas
       try {
-        const tablesResponse = await tableAPI.getAllTables()
-        setTables(tablesResponse.data || [])
-      } catch (err) {
-        console.error('Error recargando mesas:', err)
+        const response = await tableAPI.createTable(tableData)
+        
+        // Establecer la mesa creada como mesa actual
+        setCurrentTable({
+          ...response.data,
+          players: [user], // El creador es el primer jugador
+          botsCount: formData.bots
+        })
+        
+        setCurrentView('table')
+        
+        // Recargar lista de mesas
+        try {
+          const tablesResponse = await tableAPI.getAllTables()
+          setTables(tablesResponse.data || [])
+        } catch (err) {
+          console.warn('No se pudo recargar mesas')
+        }
+      } catch (apiError) {
+        // Si backend no está disponible, crear mesa localmente
+        console.warn('Backend no disponible, creando mesa localmente')
+        const localTable = {
+          id: Date.now(),
+          ...tableData,
+          players: [user],
+          status: 'waiting'
+        }
+        setCurrentTable(localTable)
+        setCurrentView('table')
+        setTables(prev => [...prev, localTable])
       }
     } catch (err) {
       console.error('Error creando mesa:', err)
@@ -155,6 +162,35 @@ function App() {
   // Si hay usuario, mostrar la aplicación principal
   return (
     <div className="App">
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#1a1a2e',
+            color: '#daa520',
+            border: '2px solid #daa520',
+            borderRadius: '12px',
+            padding: '16px',
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)'
+          },
+          success: {
+            iconTheme: {
+              primary: '#0b6623',
+              secondary: '#daa520',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#c41e3a',
+              secondary: '#daa520',
+            },
+          },
+        }}
+      />
+      
       <Navbar user={user} onLogout={handleLogout} />
       
       {/* Renderizar vista actual */}

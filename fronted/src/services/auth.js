@@ -3,68 +3,122 @@ import { authAPI } from './api';
 import { socketService } from './socket';
 
 export const authService = {
-  // Registrarse
+  // Registrarse (Frontend-only con mock)
   register: async (username, email, password) => {
     try {
+      // Intentar registro real con backend
       const response = await authAPI.register(username, email, password);
       const { token, user } = response.data;
 
-      // Guardar en localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Guardar en sessionStorage (por pestaña)
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(user));
 
-      // Conectar Socket.IO con el token
-      socketService.connect(token);
+      // Conectar Socket.IO con el token (solo si backend está disponible)
+      try {
+        socketService.connect(token);
+      } catch (err) {
+        console.warn('Socket.IO no disponible');
+      }
 
       return { success: true, user, token };
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error en el registro',
+      // Si falla la conexión, usar registro mock (frontend-only)
+      console.warn('Backend no disponible, usando registro mock');
+      
+      // Crear usuario mock
+      const mockUser = {
+        id: Date.now(),
+        username: username,
+        email: email,
+        chips: 1000,
+        avatar: '🎮',
+        level: 1
       };
+      const mockToken = 'mock-token-' + Date.now();
+
+      // Guardar en sessionStorage (por pestaña)
+      sessionStorage.setItem('token', mockToken);
+      sessionStorage.setItem('user', JSON.stringify(mockUser));
+
+      return { success: true, user: mockUser, token: mockToken };
     }
   },
 
-  // Iniciar sesión
+  // Iniciar sesión (con fallback a mock)
   login: async (email, password) => {
     try {
       const response = await authAPI.login(email, password);
       const { token, user } = response.data;
 
-      // Guardar en localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Guardar en sessionStorage (por pestaña)
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(user));
 
-      // Conectar Socket.IO con el token
-      socketService.connect(token);
+      // Conectar Socket.IO con el token (solo si backend está disponible)
+      try {
+        socketService.connect(token);
+      } catch (err) {
+        console.warn('Socket.IO no disponible');
+      }
 
       return { success: true, user, token };
     } catch (error) {
+      // Log detallado del error
+      console.error('❌ Error de login en backend:');
+      console.error('   Status:', error.response?.status);
+      console.error('   Data:', error.response?.data);
+      console.error('   Message:', error.message);
+      
+      // Si el backend falla, buscar usuario mock en localStorage
+      console.warn('Intentando con usuario mock local...');
+      
+      const storedUser = sessionStorage.getItem('user');
+      const storedToken = sessionStorage.getItem('token');
+      
+      // Si hay un usuario guardado localmente con el mismo email, usar ese
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        if (user.email === email) {
+          console.log('✅ Login exitoso con usuario mock:', user);
+          return { success: true, user, token: storedToken };
+        }
+      }
+      
+      // Si no hay usuario local, retornar error
       return {
         success: false,
-        error: error.response?.data?.message || 'Error en el inicio de sesión',
+        error: error.response?.data?.message || 'Usuario o contraseña incorrectos',
       };
     }
   },
 
   // Obtener usuario actual
   getCurrentUser: () => {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    const user = sessionStorage.getItem('user');
+    if (user) {
+      const parsedUser = JSON.parse(user);
+      // Asegurar que el usuario tenga nivel por defecto si no lo tiene
+      if (!parsedUser.level) {
+        parsedUser.level = 1;
+      }
+      return parsedUser;
+    }
+    return null;
   },
 
   // Obtener token
-  getToken: () => localStorage.getItem('token'),
+  getToken: () => sessionStorage.getItem('token'),
 
   // Verificar si está autenticado
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!sessionStorage.getItem('token');
   },
 
   // Cerrar sesión
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     socketService.disconnect();
   },
 
@@ -74,8 +128,8 @@ export const authService = {
       const response = await authAPI.getProfile();
       const user = response.data;
       
-      // Actualizar en localStorage
-      localStorage.setItem('user', JSON.stringify(user));
+      // Actualizar en sessionStorage
+      sessionStorage.setItem('user', JSON.stringify(user));
       
       return { success: true, user };
     } catch (error) {
@@ -93,7 +147,7 @@ export const authService = {
       const { token } = response.data;
       
       if (token) {
-        localStorage.setItem('token', token);
+        sessionStorage.setItem('token', token);
       }
       
       return { success: true };
@@ -105,9 +159,9 @@ export const authService = {
   },
 };
 
-// Inicializar Socket.IO si hay sesión activa al cargar
-if (authService.isAuthenticated()) {
-  socketService.connect(authService.getToken());
-}
+// No inicializar Socket.IO automáticamente - solo cuando el usuario haga login
+// if (authService.isAuthenticated()) {
+//   socketService.connect(authService.getToken());
+// }
 
 export default authService;

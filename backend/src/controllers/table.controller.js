@@ -25,14 +25,15 @@ export const getTable = async (req, res) => {
 
 export const createTable = async (req, res) => {
   try {
-    const { name, smallBlind, bigBlind, maxPlayers, isPrivate, tableColor } = req.body;
+    const { name, smallBlind, bigBlind, maxPlayers, isPrivate, tableColor, botsCount } = req.body;
     const table = await Table.create({
       name,
       smallBlind,
       bigBlind,
       maxPlayers: maxPlayers || 6,
       isPrivate: isPrivate || false,
-      tableColor: tableColor || '#1a4d2e'
+      tableColor: tableColor || '#1a4d2e',
+      botsCount: botsCount || 0
     });
     res.status(201).json(table);
   } catch (error) {

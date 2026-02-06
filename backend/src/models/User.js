@@ -59,6 +59,11 @@ const User = sequelize.define('User', {
   lastFreeChipsDate: {
     type: DataTypes.DATE,
     defaultValue: null
+  },
+  isBot: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Indica si es un usuario bot automático'
   }
 }, {
   timestamps: true,

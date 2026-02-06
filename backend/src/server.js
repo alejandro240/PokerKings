@@ -4,6 +4,7 @@ import { config } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { setupSocket } from './config/socket.js';
 import { seedDatabase } from './database/seed.js';
+import { startTableCleanupService } from './services/table.cleanup.js';
 
 const server = createServer(app);
 
@@ -17,6 +18,9 @@ connectDB();
 if (config.nodeEnv === 'development') {
   seedDatabase();
 }
+
+// Iniciar servicio de limpieza de mesas vacías
+startTableCleanupService();
 
 // Start server
 server.listen(config.port, () => {

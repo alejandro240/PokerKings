@@ -14,7 +14,7 @@ const apiClient = axios.create({
 // Interceptor para agregar token a cada petición
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,8 +29,8 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expirado o inválido
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -77,6 +77,37 @@ export const tableAPI = {
   
   getTableById: (tableId) =>
     apiClient.get(`/tables/${tableId}`),
+};
+
+// ============= JUEGO (INTEGRACIÓN CON BACKEND) =============
+export const gameAPI = {
+  // Crear/iniciar un juego
+  startGame: (tableId, playerIds) =>
+    apiClient.post('/games/start', { tableId, playerIds }),
+  
+  // Obtener estado del juego
+  getGame: (gameId) =>
+    apiClient.get(`/games/${gameId}`),
+  
+  // Enviar acción del jugador
+  playerAction: (gameId, action, amount = 0) =>
+    apiClient.post(`/games/${gameId}/action`, { action, amount }),
+  
+  // Obtener historial de juegos
+  getPlayerGames: (userId) =>
+    apiClient.get(`/games/player/${userId}`),
+  
+  // Obtener historial de la mesa
+  getGameHistory: (tableId) =>
+    apiClient.get(`/games/table/${tableId}/history`),
+  
+  // Obtener detalles de una mano
+  getHandDetails: (gameId, handId) =>
+    apiClient.get(`/games/${gameId}/hands/${handId}`),
+  
+  // Salir de un juego
+  leaveGame: (gameId) =>
+    apiClient.post(`/games/${gameId}/leave`),
 };
 
 // ============= TIENDA =============

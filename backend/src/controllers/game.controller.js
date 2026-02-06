@@ -1,6 +1,9 @@
 import { Game, Table, User, Hand, HandAction } from '../models/index.js';
+import { Op } from 'sequelize';
+import { getIO } from '../config/socket.js';
 import {
   initializeGame,
+  activateWaitingGame,
   processPlayerAction,
   getGameState,
   createDeck
@@ -13,11 +16,11 @@ import {
  */
 export const startGame = async (req, res) => {
   try {
-    const { tableId, playerIds } = req.body;
+    let { tableId, playerIds } = req.body;
 
-    if (!tableId || !playerIds || playerIds.length < 2) {
+    if (!tableId || !playerIds || playerIds.length < 1) {
       return res.status(400).json({ 
-        error: 'Se requieren tableId y al menos 2 jugadores' 
+        error: 'Se requieren tableId y al menos 1 jugador' 
       });
     }
 
@@ -27,15 +30,115 @@ export const startGame = async (req, res) => {
       return res.status(404).json({ error: 'Mesa no encontrada' });
     }
 
-    // Verificar que no hay otro juego activo en la mesa
+    // Verificar si hay juego activo o en espera
     const activeGame = await Game.findOne({
       where: { tableId, status: 'active' }
     });
 
     if (activeGame) {
-      return res.status(400).json({ 
-        error: 'Ya hay un juego activo en esta mesa' 
+      console.log('ℹ️  Ya hay un juego activo en la mesa');
+      
+      // Parsear players si es string
+      const gamePlayers = typeof activeGame.players === 'string' 
+        ? JSON.parse(activeGame.players || '[]')
+        : (activeGame.players || []);
+      
+      // Verificar si el usuario ya está en el juego
+      const userAlreadyInGame = gamePlayers.some(p => playerIds.includes(p.userId));
+      
+      if (userAlreadyInGame) {
+        console.log('✅ Usuario ya está en el juego, devolviendo estado actual');
+        return res.status(200).json({
+          success: true,
+          message: 'Ya estás en este juego',
+          game: await getGameState(activeGame.id)
+        });
+      } else {
+        // El usuario no está en el juego, pero el juego ya está activo
+        // No permitir que se una un nuevo usuario a un juego ya iniciado
+        console.log('⚠️  El juego ya está activo y no puedes unirte a mitad de juego');
+        return res.status(400).json({
+          error: 'El juego ya está en progreso. Espera a que termine para unirte.'
+        });
+      }
+    }
+
+    const waitingGame = await Game.findOne({
+      where: { tableId, status: 'waiting' }
+    });
+
+    if (waitingGame) {
+      // Unirse a juego en espera
+      const gamePlayers = typeof waitingGame.players === 'string'
+        ? JSON.parse(waitingGame.players || '[]')
+        : (waitingGame.players || []);
+
+      const alreadyInGame = gamePlayers.some(p => playerIds.includes(p.userId));
+      if (!alreadyInGame) {
+        const newPlayerId = playerIds[0];
+        const user = await User.findByPk(newPlayerId);
+        if (user) {
+          gamePlayers.push({ userId: user.id, chips: Math.min(user.chips, 10000) });
+          waitingGame.players = gamePlayers;
+          waitingGame.changed('players', true);
+          await waitingGame.save();
+        }
+      }
+
+      if (gamePlayers.length >= 2) {
+        const players = await User.findAll({
+          where: { id: gamePlayers.map(p => p.userId) },
+          attributes: ['id', 'chips']
+        });
+
+        const playersData = players.map(p => ({
+          userId: p.id,
+          chips: Math.min(p.chips, 10000)
+        }));
+
+        await activateWaitingGame(waitingGame, playersData);
+
+        const gameState = await getGameState(waitingGame.id);
+        const io = getIO();
+        io.to(`table_${tableId}`).emit('gameStateUpdated', gameState);
+
+        return res.status(200).json({
+          success: true,
+          message: 'Juego iniciado con jugadores',
+          game: gameState
+        });
+      }
+
+      const waitingState = await getGameState(waitingGame.id, false);
+      return res.status(200).json({
+        success: true,
+        message: 'Esperando más jugadores',
+        game: waitingState
       });
+    }
+
+    // Agregar bots según la configuración de la mesa
+    const botsToAdd = table.botsCount || 0;
+    
+    if (botsToAdd > 0) {
+      console.log(`⚠️  Agregando ${botsToAdd} bots según configuración de la mesa...`);
+      
+      // Buscar usuarios bot disponibles
+      const availablePlayers = await User.findAll({
+        where: { 
+          id: { [Op.notIn]: playerIds },
+          isBot: true  // Solo bots reales
+        },
+        limit: botsToAdd,
+        order: [['createdAt', 'ASC']]
+      });
+
+      // Agregar los bots
+      for (let i = 0; i < Math.min(availablePlayers.length, botsToAdd); i++) {
+        playerIds.push(availablePlayers[i].id);
+      }
+
+      console.log(`✅ ${Math.min(availablePlayers.length, botsToAdd)} bots agregados. Total jugadores: ${playerIds.length}`);
     }
 
     // Obtener datos de los jugadores (chips de su cuenta)
@@ -44,8 +147,26 @@ export const startGame = async (req, res) => {
       attributes: ['id', 'chips']
     });
 
-    if (players.length !== playerIds.length) {
-      return res.status(404).json({ error: 'Uno o más jugadores no existen' });
+    if (players.length < 2) {
+      const waitingGameCreated = await Game.create({
+        tableId,
+        phase: 'waiting',
+        status: 'waiting',
+        players: players.map(p => ({ userId: p.id, chips: Math.min(p.chips, 10000) })),
+        communityCards: [],
+        currentBet: 0,
+        pot: 0
+      });
+
+      const waitingState = await getGameState(waitingGameCreated.id, false);
+      const io = getIO();
+      io.to(`table_${tableId}`).emit('gameStateUpdated', waitingState);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Mesa creada. Esperando más jugadores',
+        game: waitingState
+      });
     }
 
     // Inicializar el juego
@@ -62,10 +183,21 @@ export const startGame = async (req, res) => {
       currentPlayers: playerIds.length
     });
 
+    const gameState = await getGameState(game.id);
+
+    // Emitir evento WebSocket para actualizar el frontend en tiempo real
+    try {
+      const io = getIO();
+      io.to(`table_${tableId}`).emit('gameStateUpdated', gameState);
+      console.log(`📡 Evento gameStateUpdated emitido para mesa ${tableId}`);
+    } catch (err) {
+      console.warn('⚠️  No se pudo emitir evento WebSocket:', err.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Juego iniciado',
-      game: await getGameState(game.id)
+      game: gameState
     });
 
   } catch (error) {
@@ -125,12 +257,49 @@ export const playerAction = async (req, res) => {
     // Procesar la acción
     const result = await processPlayerAction(game, userId, action, amount || 0);
 
+    // Emitir actualización del juego a todos los jugadores en la sala
+    const io = getIO();
+    const table = await Table.findByPk(game.tableId);
+    if (table) {
+      const updatedGameState = await getGameState(gameId, false);
+      io.to(`table_${table.id}`).emit('gameStateUpdated', updatedGameState);
+      console.log(`📢 Emitiendo gameStateUpdated a sala table_${table.id}`);
+    }
+
     if (result.gameOver) {
       return res.json({
         success: true,
         gameOver: true,
         winner: result.winner || null,
         gameState: await getGameState(gameId, false)
+      });
+    }
+
+    if (result.handOver) {
+      try {
+        const winnerId = result.winner?.userId || result.winner?.id;
+        const winnerUser = winnerId ? await User.findByPk(winnerId) : null;
+        const potWon = result.potWon || (result.winners || []).reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+        const io = getIO();
+        const table = await Table.findByPk(game.tableId);
+        if (table) {
+          io.to(`table_${table.id}`).emit('handOver', {
+            gameId,
+            tableId: table.id,
+            winnerId,
+            winnerName: winnerUser?.username || 'Desconocido',
+            potWon
+          });
+        }
+      } catch (emitError) {
+        console.error('Error emitiendo handOver:', emitError.message);
+      }
+
+      return res.json({
+        success: true,
+        handOver: true,
+        winner: result.winner || null,
+        gameState: result.gameState || await getGameState(gameId, false)
       });
     }
 

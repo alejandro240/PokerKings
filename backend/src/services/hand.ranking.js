@@ -22,17 +22,16 @@ const RANK_VALUES = {
 };
 
 /**
- * Parse una carta en formato "A♠"
+ * Parse una carta en formato "AS"
  */
 const parseCard = (card) => {
-  const suits = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' };
   const suitChar = card.charAt(card.length - 1);
   const rankStr = card.substring(0, card.length - 1);
   
   return {
     rank: RANK_VALUES[rankStr],
     rankStr,
-    suit: suits[suitChar] || suitChar
+    suit: suitChar
   };
 };
 

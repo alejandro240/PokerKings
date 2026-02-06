@@ -259,11 +259,18 @@ const usePokerGame = () => {
   const committed = parseInt(currentPlayerState?.committed ?? playerBet) || 0;
   const currentBetNum = parseInt(currentBet) || 0;
   const isMyTurn = currentPlayerTurn === playerIndex;
-  const canCheck = isMyTurn && committed >= currentBetNum && !playerHasFolded;
+  const isPreflop = gamePhase === 'preflop' || gamePhase === 'pre-flop';
+  const isBigBlind = playerIndex === bigBlindPosition;
+  let canCheck = isMyTurn && committed >= currentBetNum && !playerHasFolded;
   const canCall = isMyTurn && currentBetNum > committed && !playerHasFolded;
   const canRaise = isMyTurn && playerChips > (currentBetNum - committed + minRaise) && !playerHasFolded;
   const canFold = isMyTurn && !playerHasFolded;
   const canAllIn = isMyTurn && playerChips > 0 && !playerHasFolded;
+
+  // Preflop: si eres BB y ya igualaste (SB ha pagado), debes poder hacer check
+  if (isMyTurn && isPreflop && isBigBlind && committed >= currentBetNum && !playerHasFolded) {
+    canCheck = true;
+  }
 
   // Debug logs para check
   if (isMyTurn) {

@@ -58,13 +58,16 @@ function BettingActions({
       </div>
 
       {/* Barra de botones SIEMPRE VISIBLE */}
-      <div className="action-buttons" style={{ display: showRaiseSlider ? 'none' : 'flex' }}>
+      <div className="action-buttons" style={{ display: 'flex', position: 'relative', zIndex: 50 }}>
           {/* Botón 1: No ir (Fold) */}
-          {canFold && (
-            <button className="btn-action btn-fold" onClick={onFold} disabled={!isPlayerTurn}>
-              🚫 No ir
-            </button>
-          )}
+          <button
+            className="btn-action btn-fold"
+            onClick={onFold}
+            disabled={!isPlayerTurn || !canFold}
+            title={!canFold ? 'No puedes hacer fold ahora' : 'No ir'}
+          >
+            🚫 No ir
+          </button>
           
           {/* Botón 2: Pasar (Check) - SIEMPRE VISIBLE */}
           <button 
@@ -72,28 +75,29 @@ function BettingActions({
             onClick={onCheck}
             disabled={!isPlayerTurn || !canCheck}
             title={!canCheck ? "No puedes pasar, debes igualar la apuesta" : "Pasar sin apostar"}
-            style={{
-              display: 'inline-block',
-              visibility: 'visible',
-              opacity: (!isPlayerTurn || !canCheck) ? 0.5 : 1
-            }}
           >
             ✅ Pasar
           </button>
           
-          {/* Botón 3: Igualar (Call) - Solo si hay que igualar */}
-          {canCall && (
-            <button className="btn-action btn-call" onClick={onCall} disabled={!isPlayerTurn}>
-              💵 Igualar {currentBet.toLocaleString()} PK
-            </button>
-          )}
+          {/* Botón 3: Igualar (Call) */}
+          <button
+            className="btn-action btn-call"
+            onClick={onCall}
+            disabled={!isPlayerTurn || !canCall}
+            title={!canCall ? 'No puedes igualar ahora' : 'Igualar'}
+          >
+            💵 Igualar {currentBet.toLocaleString()} PK
+          </button>
           
           {/* Botón 4: Subir (Raise) */}
-          {canRaise && (
-            <button className="btn-action btn-raise" onClick={() => setShowRaiseSlider(true)} disabled={!isPlayerTurn}>
-              💸 Subir
-            </button>
-          )}
+          <button
+            className="btn-action btn-raise"
+            onClick={() => setShowRaiseSlider(true)}
+            disabled={!isPlayerTurn || !canRaise}
+            title={!canRaise ? 'No puedes subir ahora' : 'Subir'}
+          >
+            💸 Subir
+          </button>
         </div>
 
       {/* Slider de subida */}

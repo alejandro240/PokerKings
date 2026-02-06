@@ -100,10 +100,22 @@
   box-shadow: 0 6px 20px rgba(196, 30, 58, 0.4);
 }
 
+.btn-fold:disabled {
+  background: linear-gradient(135deg, #555555 0%, #333333 100%);
+  border-color: #777777;
+  color: #999999;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .btn-check {
   background: linear-gradient(135deg, #0b6623 0%, #085018 100%);
   border-color: #4ade80;
   color: white;
+  position: static !important;
+  clip: auto !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
 }
 
 .btn-check:hover:not(:disabled) {
@@ -113,11 +125,11 @@
 }
 
 .btn-check:disabled {
-  background: linear-gradient(135deg, #555555 0%, #333333 100%);
-  border-color: #777777;
-  color: #999999;
+  background: linear-gradient(135deg, #555555 0%, #333333 100%) !important;
+  border-color: #777777 !important;
+  color: #999999 !important;
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.5 !important;
 }
 
 .btn-call {
@@ -132,6 +144,14 @@
   box-shadow: 0 6px 20px rgba(15, 52, 96, 0.4);
 }
 
+.btn-call:disabled {
+  background: linear-gradient(135deg, #555555 0%, #333333 100%);
+  border-color: #777777;
+  color: #999999;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .btn-raise {
   background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
   border-color: #ffd700;
@@ -142,6 +162,14 @@
   background: linear-gradient(135deg, #e0b840 0%, #c89d20 100%);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(218, 165, 32, 0.5);
+}
+
+.btn-raise:disabled {
+  background: linear-gradient(135deg, #555555 0%, #333333 100%);
+  border-color: #777777;
+  color: #999999;
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .btn-allin {

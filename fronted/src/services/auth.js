@@ -4,10 +4,10 @@ import { socketService } from './socket';
 
 export const authService = {
   // Registrarse (Frontend-only con mock)
-  register: async (username, email, password) => {
+  register: async (username, email, password, avatar = '🎮') => {
     try {
       // Intentar registro real con backend
-      const response = await authAPI.register(username, email, password);
+      const response = await authAPI.register(username, email, password, avatar);
       const { token, user } = response.data;
 
       // Guardar en sessionStorage (por pestaña)
@@ -32,7 +32,7 @@ export const authService = {
         username: username,
         email: email,
         chips: 1000,
-        avatar: '🎮',
+        avatar: avatar || '🎮',
         level: 1
       };
       const mockToken = 'mock-token-' + Date.now();

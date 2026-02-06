@@ -3,10 +3,10 @@ import { Toaster } from 'react-hot-toast'
 import Navbar from './components/layout/Navbar'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
-import HomePage from './pages/HomePage'
-import LobbyPage from './pages/LobbyPage'
-import CreateTablePage from './pages/CreateTablePage'
-import TablePage from './pages/TablePage'
+import HomePage from './hooks/pages/HomePage'
+import LobbyPage from './hooks/pages/LobbyPage'
+import CreateTablePage from './hooks/pages/CreateTablePage'
+import TablePage from './hooks/pages/TablePage'
 import './App.css'
 import './styles/animations.css'
 import { authService } from './services/auth'
@@ -65,6 +65,12 @@ function App() {
     setUser(null)
     setTables([])
     setCurrentView('home')
+  }
+
+  // Función para actualizar usuario
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser)
+    localStorage.setItem('user', JSON.stringify(updatedUser))
   }
 
   // Navegación entre vistas
@@ -191,7 +197,7 @@ function App() {
         }}
       />
       
-      <Navbar user={user} onLogout={handleLogout} />
+      <Navbar user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
       
       {/* Renderizar vista actual */}
       {currentView === 'home' && (

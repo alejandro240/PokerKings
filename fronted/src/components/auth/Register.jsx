@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { authService } from '../../services/auth';
+import AvatarSelector from './AvatarSelector';
 import './Register.css';
 
 function Register({ onRegisterSuccess, onSwitchToLogin }) {
@@ -7,7 +8,8 @@ function Register({ onRegisterSuccess, onSwitchToLogin }) {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    avatar: '🎮'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +48,8 @@ function Register({ onRegisterSuccess, onSwitchToLogin }) {
       const result = await authService.register(
         formData.username,
         formData.email,
-        formData.password
+        formData.password,
+        formData.avatar
       );
 
       if (result.success) {
@@ -86,6 +89,12 @@ function Register({ onRegisterSuccess, onSwitchToLogin }) {
         )}
 
         <form onSubmit={handleSubmit} className="register-form">
+          {/* Selector de avatar */}
+          <AvatarSelector 
+            selectedAvatar={formData.avatar}
+            onSelectAvatar={(avatar) => setFormData(prev => ({ ...prev, avatar }))}
+          />
+
           {/* Nombre de usuario */}
           <div className="form-group">
             <label className="form-label">

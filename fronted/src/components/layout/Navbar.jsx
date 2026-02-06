@@ -1,20 +1,33 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import TrofeosOffcanvas from './TrofeosOffcanvas';
 import MisionesOffcanvas from './MisionesOffcanvas';
 import AmigosOffcanvas from './AmigosOffcanvas';
 import InvitacionesOffcanvas from './InvitacionesOffcanvas';
+import AccountModal from './AccountModal';
 import './Navbar.css';
 
-function Navbar({ user, onLogout }) {
+function Navbar({ user, onLogout, onUpdateUser }) {
   // Estado para controlar qué offcanvas está abierto (solo uno a la vez)
   const [activeOffcanvas, setActiveOffcanvas] = useState(null);
+  const [showAccountModal, setShowAccountModal] = useState(false);
 
   // Funciones para abrir offcanvas (cierra cualquier otro abierto)
   const openTrofeos = () => setActiveOffcanvas('trofeos');
   const openMisiones = () => setActiveOffcanvas('misiones');
   const openAmigos = () => setActiveOffcanvas('amigos');
   const openInvitaciones = () => setActiveOffcanvas('invitaciones');
+  const openAccount = () => setShowAccountModal(true);
   const closeOffcanvas = () => setActiveOffcanvas(null);
+
+  // Manejar actualización de avatar
+  const handleUpdateAvatar = (newAvatar) => {
+    if (onUpdateUser) {
+      onUpdateUser({ ...user, avatar: newAvatar });
+      toast.success('🎉 Avatar actualizado correctamente');
+      setShowAccountModal(false);
+    }
+  };
 
   // Función para ir a inicio
   const handleInicio = () => {
@@ -23,9 +36,53 @@ function Navbar({ user, onLogout }) {
 
   // Función para cerrar sesión
   const handleCerrarSesion = () => {
-    if (onLogout) {
-      onLogout();
-    }
+    // Cerrar cualquier toast de confirmación previo
+    toast.dismiss('logout-confirm');
+    
+    // Mostrar toast de confirmación
+    toast((t) => (
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>
+          ¿Estás seguro que quieres cerrar sesión?
+        </p>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+            }}
+            style={{
+              padding: '8px 16px',
+              background: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              if (onLogout) {
+                onLogout();
+              }
+              toast.success('Sesión cerrada correctamente');
+            }}
+            style={{
+              padding: '8px 16px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Sí, cerrar sesión
+          </button>
+        </div>
+      </div>
+    ), { duration: 5000, id: 'logout-confirm' });
   };
 
   return (
@@ -95,7 +152,17 @@ function Navbar({ user, onLogout }) {
                 </button>
               </li>
 
-              {/* 6. Cerrar Sesión */}
+              {/* 6. Mi Cuenta */}
+              <li className="nav-item">
+                <button 
+                  className="nav-link btn btn-link" 
+                  onClick={openAccount}
+                >
+                  👤 Mi Cuenta
+                </button>
+              </li>
+
+              {/* 7. Cerrar Sesión */}
               <li className="nav-item">
                 <button 
                   className="nav-link btn btn-link text-danger" 
@@ -131,6 +198,14 @@ function Navbar({ user, onLogout }) {
       <InvitacionesOffcanvas 
         show={activeOffcanvas === 'invitaciones'} 
         onHide={closeOffcanvas} 
+      />
+
+      {/* Modal de Mi Cuenta */}
+      <AccountModal 
+        show={showAccountModal}
+        onHide={() => setShowAccountModal(false)}
+        user={user}
+        onUpdateAvatar={handleUpdateAvatar}
       />
     </>
   );

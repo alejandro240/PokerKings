@@ -67,6 +67,12 @@ function App() {
     setCurrentView('home')
   }
 
+  // Función para actualizar usuario
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser)
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+  }
+
   // Navegación entre vistas
   const handleNavigate = (view) => {
     setCurrentView(view)
@@ -191,7 +197,7 @@ function App() {
         }}
       />
       
-      <Navbar user={user} onLogout={handleLogout} />
+      <Navbar user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
       
       {/* Renderizar vista actual */}
       {currentView === 'home' && (

@@ -65,7 +65,8 @@ function PokerTable({
     }
 
     // Agregar nuevas cartas con un pequeño delay para activar la transición
-    visibleCards.forEach((card, index) => {
+    const currentVisibleCards = getVisibleCards();
+    currentVisibleCards.forEach((card, index) => {
       if (!revealedCards.includes(card)) {
         setTimeout(() => {
           setRevealedCards(prev => {
@@ -77,7 +78,8 @@ function PokerTable({
         }, 100); // Pequeño delay para que el navegador detecte el cambio
       }
     });
-  }, [visibleCards, gamePhase]);
+  }, [gamePhase, communityCards.length]);
+  
   // Posiciones de los asientos alrededor de la mesa según el número máximo
   const seatPositions = {
     4: [

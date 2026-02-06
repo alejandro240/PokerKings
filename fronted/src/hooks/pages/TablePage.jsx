@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import PokerTable from '../../components/table/PokerTable';
 import BettingActions from '../../components/table/BettingActions';
@@ -11,12 +11,13 @@ function TablePage({ table, user, onNavigate }) {
   const [isSpectator, setIsSpectator] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState([]);
+  const gameInitialized = useRef(false);
 
   // Usar el hook de juego de póker
   const pokerGame = usePokerGame();
 
   useEffect(() => {
-    if (table) {
+    if (table && !gameInitialized.current) {
       // Inicializar jugadores: el usuario actual + bots si se configuraron
       const initialPlayers = [];
       
@@ -60,7 +61,7 @@ function TablePage({ table, user, onNavigate }) {
         const playerIndex = initialPlayers.findIndex(p => p && p.username === user?.username);
         
         // Iniciar juego con el array COMPLETO (incluyendo nulls) (después el backend enviará esto)
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           pokerGame.startNewGame(
             initialPlayers,  // Array completo con nulls
             playerIndex >= 0 ? playerIndex : 0,
@@ -68,10 +69,19 @@ function TablePage({ table, user, onNavigate }) {
             table.bigBlind || 100
           );
           pokerGame.updatePlayerChips(user?.chips || 5000);
+          gameInitialized.current = true;
         }, 1000);
+
+        // Limpiar timeout si el componente se desmonta
+        return () => clearTimeout(timeoutId);
       }
     }
-  }, [table, user, isSpectator]);
+  }, [table?.id, user?.id]);
+
+  // Resetear inicialización cuando cambia la mesa
+  useEffect(() => {
+    gameInitialized.current = false;
+  }, [table?.id]);
 
   // Manejar levantarse (modo espectador)
   const handleStandUp = () => {

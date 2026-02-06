@@ -3,8 +3,8 @@ import toast from 'react-hot-toast';
 import PokerTable from '../../components/table/PokerTable';
 import BettingActions from '../../components/table/BettingActions';
 import usePokerGame from '../usePokerGame';
-import { gameAPI } from '../services/api';
-import { gameSocket } from '../services/gameSocket';
+import { gameAPI } from '../../services/api';
+import { gameSocket } from '../../services/gameSocket';
 import './TablePage.css';
 
 function TablePage({ table, user, onNavigate }) {
@@ -20,6 +20,15 @@ function TablePage({ table, user, onNavigate }) {
 
   // Usar el hook de juego de póker (conectado con backend)
   const pokerGame = usePokerGame();
+
+  if (!user) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#e0e0e0' }}>
+        <h2>Cargando usuario...</h2>
+        <p>Espera un momento</p>
+      </div>
+    );
+  }
 
   // Sincronizar jugadores desde el backend
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { tableAPI } from '../services/api';
+import { tableAPI } from '../../services/api';
 import './LobbyPage.css';
 
 function LobbyPage({ onNavigate, onJoinTable }) {

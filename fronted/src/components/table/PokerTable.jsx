@@ -223,6 +223,7 @@ function PokerTable({
         
         // Obtener el índice original del jugador para las posiciones de dealer/blind
         const originalIndex = playerIndexMap[index] !== undefined ? playerIndexMap[index] : index;
+        const isCurrentPlayer = originalIndex === currentUserIndex;
 
         return (
           <div 

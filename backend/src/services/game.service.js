@@ -373,6 +373,11 @@ const finishByFold = async (game) => {
     }
   }
 
+  // Fallback: if eligible pots are zero, use total pot amount
+  if (winningsFromPots === 0) {
+    winningsFromPots = sidePots.reduce((sum, pot) => sum + (pot.amount || 0), 0);
+  }
+
   // Add the winnings to winner's chips
   winner.chips += winningsFromPots;
 
@@ -552,7 +557,10 @@ const finishShowdown = async (game) => {
   // ¿Hay suficientes jugadores con fichas para seguir?
   const playersWithChips = game.players.filter(p => p.chips > 0 && !p.isSittingOut);
   if (playersWithChips.length >= 2) {
-    const potWon = winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+    let potWon = winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+    if (potWon === 0) {
+      potWon = sidePots.reduce((sum, pot) => sum + (pot.amount || 0), 0);
+    }
     await startNextHand(game);
     return { winner: primaryWinner, winners, potWon, handContinues: true };
   }
@@ -568,7 +576,11 @@ const finishShowdown = async (game) => {
 
   await game.save();
 
-  return { winner: primaryWinner, handContinues: false };
+  let potWon = winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+  if (potWon === 0) {
+    potWon = sidePots.reduce((sum, pot) => sum + (pot.amount || 0), 0);
+  }
+  return { winner: primaryWinner, winners, potWon, handContinues: false };
 };
 
 /**

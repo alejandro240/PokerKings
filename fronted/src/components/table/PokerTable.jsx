@@ -235,9 +235,9 @@ function PokerTable({
               <>
                 {/* Cartas del jugador - ARRIBA del player-info */}
                 <div className="player-cards">
-                  {isCurrentPlayer && player.cards && player.cards.length > 0 ? (
-                    // Mostrar cartas reveladas para el jugador actual
-                    player.cards.map((card, cardIndex) => {
+                  {isCurrentPlayer && player.holeCards && player.holeCards.length > 0 ? (
+                    // Mostrar cartas reveladas solo para el jugador actual
+                    player.holeCards.map((card, cardIndex) => {
                       const cardImage = getCardImage(card);
                       return (
                         <div key={cardIndex} className="player-card-revealed">

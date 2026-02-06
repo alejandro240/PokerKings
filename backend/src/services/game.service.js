@@ -124,6 +124,7 @@ export const initializeGame = async (tableId, playersData) => {
     // Repartir cartas iniciales (2 por jugador)
     players.forEach(player => {
       player.hand = [deck.pop(), deck.pop()];
+      player.holeCards = [...player.hand];
     });
 
     // El siguiente jugador en turno será quien actúa primero (después de BB)
@@ -190,6 +191,7 @@ export const activateWaitingGame = async (game, playersData) => {
 
   players.forEach(player => {
     player.hand = [deck.pop(), deck.pop()];
+    player.holeCards = [...player.hand];
   });
 
   const currentPlayerIndex = players.length === 2
@@ -250,9 +252,11 @@ const startNextHand = async (game) => {
   players.forEach((p) => {
     if (p.chips > 0 && !p.isSittingOut) {
       p.hand = [deck.pop(), deck.pop()];
+      p.holeCards = [...p.hand];
       p.folded = false;
     } else {
       p.hand = null;
+      p.holeCards = null;
       p.folded = true;
     }
   });

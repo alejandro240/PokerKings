@@ -166,10 +166,10 @@ const usePokerGame = () => {
         console.error('❌ Error en acción:', data.error);
       } else {
         console.log('✅ Acción procesada:', action);
-        if (data.handOver && data.winner) {
+        if (data.handOver) {
           setLastHandResult({
-            winnerId: data.winner.userId || data.winner.id,
-            winnerName: data.winner.username || 'Desconocido',
+            winnerId: data.winnerId || data.winner?.userId || data.winner?.id,
+            winnerName: data.winnerName || data.winner?.username || 'Desconocido',
             potWon: data.potWon || 0
           });
           setPlayerHasActed(false);

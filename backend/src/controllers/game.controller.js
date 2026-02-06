@@ -276,10 +276,14 @@ export const playerAction = async (req, res) => {
     }
 
     if (result.handOver) {
+      let winnerId = result.winner?.userId || result.winner?.id;
+      let winnerName = 'Desconocido';
+      let potWon = result.potWon || (result.winners || []).reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+
       try {
-        const winnerId = result.winner?.userId || result.winner?.id;
         const winnerUser = winnerId ? await User.findByPk(winnerId) : null;
-        const potWon = result.potWon || (result.winners || []).reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+        winnerName = winnerUser?.username || winnerName;
+
         const io = getIO();
         const table = await Table.findByPk(game.tableId);
         if (table) {
@@ -287,7 +291,7 @@ export const playerAction = async (req, res) => {
             gameId,
             tableId: table.id,
             winnerId,
-            winnerName: winnerUser?.username || 'Desconocido',
+            winnerName,
             potWon
           });
         }
@@ -299,6 +303,9 @@ export const playerAction = async (req, res) => {
         success: true,
         handOver: true,
         winner: result.winner || null,
+        winnerId,
+        winnerName,
+        potWon,
         gameState: result.gameState || await getGameState(gameId, false)
       });
     }

@@ -160,3 +160,41 @@
 .offcanvas-casino .text-muted {
   color: #a0a0a0 !important;
 }
+
+/* Media queries para móviles en landscape */
+@media (max-width: 1199px) and (min-width: 576px) and (orientation: landscape) {
+  .navbar-casino .navbar-nav {
+    flex-direction: row !important;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .navbar-casino .nav-item {
+    margin: 0 2px;
+  }
+
+  .navbar-casino .nav-link {
+    padding: 6px 10px !important;
+    font-size: 0.85rem;
+  }
+  
+  .navbar-casino .navbar-brand img {
+    height: 70px !important;
+  }
+}
+
+/* Ajustes para pantallas muy pequeñas en landscape */
+@media (max-width: 767px) and (orientation: landscape) {
+  .navbar-casino {
+    padding: 0.1rem 0.5rem !important;
+  }
+
+  .navbar-casino .nav-link {
+    padding: 4px 8px !important;
+    font-size: 0.75rem;
+  }
+
+  .navbar-casino .navbar-brand img {
+    height: 60px !important;
+  }
+}

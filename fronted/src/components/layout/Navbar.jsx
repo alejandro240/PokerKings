@@ -22,8 +22,12 @@ function Navbar({ user, onLogout, onUpdateUser }) {
 
   // Manejar actualización de avatar
   const handleUpdateAvatar = (newAvatar) => {
+    console.log('handleUpdateAvatar called with:', newAvatar);
+    console.log('Current user:', user);
     if (onUpdateUser) {
-      onUpdateUser({ ...user, avatar: newAvatar });
+      const updatedUser = { ...user, avatar: newAvatar };
+      console.log('Calling onUpdateUser with:', updatedUser);
+      onUpdateUser(updatedUser);
       toast.success('🎉 Avatar actualizado correctamente');
       setShowAccountModal(false);
     }
@@ -87,7 +91,7 @@ function Navbar({ user, onLogout, onUpdateUser }) {
 
   return (
     <>
-      <nav className="navbar navbar-expand-lg navbar-dark navbar-casino">
+      <nav className="navbar navbar-expand-xl navbar-dark navbar-casino">
         <div className="container-fluid">
           <a className="navbar-brand" href="/">
             <img src="/assets/images/logo.png" alt="Poker Kings" height="100" />

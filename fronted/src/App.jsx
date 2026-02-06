@@ -69,8 +69,10 @@ function App() {
 
   // Función para actualizar usuario
   const handleUpdateUser = (updatedUser) => {
+    console.log('handleUpdateUser called with:', updatedUser)
     setUser(updatedUser)
-    localStorage.setItem('user', JSON.stringify(updatedUser))
+    sessionStorage.setItem('user', JSON.stringify(updatedUser))
+    console.log('User saved to sessionStorage:', updatedUser)
   }
 
   // Navegación entre vistas

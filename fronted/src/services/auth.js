@@ -98,10 +98,28 @@ export const authService = {
     const user = sessionStorage.getItem('user');
     if (user) {
       const parsedUser = JSON.parse(user);
+      console.log('getCurrentUser - Original user:', parsedUser);
+      
       // Asegurar que el usuario tenga nivel por defecto si no lo tiene
       if (!parsedUser.level) {
         parsedUser.level = 1;
       }
+      
+      // Solo normalizar avatar si está vacío o es claramente una ruta de archivo
+      const isImagePath = parsedUser.avatar && typeof parsedUser.avatar === 'string' && 
+                         (parsedUser.avatar.includes('/') || 
+                          parsedUser.avatar.includes('.png') || 
+                          parsedUser.avatar.includes('.jpg') || 
+                          parsedUser.avatar.includes('.jpeg') ||
+                          parsedUser.avatar.includes('.gif') ||
+                          parsedUser.avatar === 'default-avatar.png');
+      
+      if (!parsedUser.avatar || isImagePath) {
+        console.log('Normalizing avatar from', parsedUser.avatar, 'to 🎮');
+        parsedUser.avatar = '🎮';
+      }
+      
+      console.log('getCurrentUser - Returned user:', parsedUser);
       return parsedUser;
     }
     return null;

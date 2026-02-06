@@ -278,7 +278,17 @@ function PokerTable({
                   )}
                   
                   <div className="player-header">
-                    <div className="player-avatar">{player.avatar || '👤'}</div>
+                    <div className="player-avatar">
+                      {(() => {
+                        // Si no hay avatar o es una ruta de imagen
+                        if (!player.avatar || player.avatar.includes('.png') || player.avatar.includes('.jpg') || player.avatar.includes('default-avatar')) {
+                          // Si es bot, usar emoji de robot, sino cara genérica
+                          return player.username && player.username.toLowerCase().includes('bot') ? '🤖' : '👤';
+                        }
+                        // Usar el emoji del avatar
+                        return player.avatar;
+                      })()}
+                    </div>
                     <div className="player-level">🎖️ Nv {player.level || 1}</div>
                   </div>
                   <div className="player-name">{player.username}</div>

@@ -155,6 +155,7 @@
 .avatar-emoji-large {
   font-size: 80px;
   line-height: 1;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
 }
 
 .avatar-counter {
@@ -184,6 +185,7 @@
   transition: all 0.3s ease;
   border: 2px solid transparent;
   opacity: 0.5;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
 }
 
 .preview-avatar:hover {

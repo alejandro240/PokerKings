@@ -92,10 +92,10 @@ function Navbar({ user, onLogout, onUpdateUser }) {
 
   return (
     <>
-      <nav className="navbar navbar-expand-xl navbar-dark navbar-casino">
+      <nav className="navbar navbar-expand-lg navbar-dark navbar-casino">
         <div className="container-fluid">
           <a className="navbar-brand" href="/">
-            <img src="/assets/images/logo.png" alt="Poker Kings" height="100" />
+            <img src="/assets/images/logo.png" alt="Poker Kings" height="75" />
           </a>
 
           {/* Botón hamburguesa para móvil - FIX: Sin Bootstrap JS */}

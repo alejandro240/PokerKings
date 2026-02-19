@@ -1,16 +1,20 @@
 .table-page {
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 62px);
   background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 100%);
-  padding: 1rem 2rem 2rem;
+  padding: 0.75rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .table-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .btn-back {
@@ -43,25 +47,30 @@
 }
 
 .table-stats {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 52, 96, 0.4);
+  border: 2px solid rgba(218, 165, 32, 0.3);
+  border-radius: 20px;
+  overflow: hidden;
+  padding: 0;
 }
 
 .stat {
-  background: rgba(15, 52, 96, 0.4);
-  border: 2px solid rgba(218, 165, 32, 0.3);
   color: #e0e0e0;
-  padding: 0.4rem 1rem;
-  border-radius: 15px;
-  font-size: 0.9rem;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
   font-weight: bold;
+  white-space: nowrap;
+  border-right: 1px solid rgba(218, 165, 32, 0.25);
+}
+
+.stat:last-child {
+  border-right: none;
 }
 
 .spectator-badge {
   background: rgba(218, 165, 32, 0.2);
-  border-color: #daa520;
   color: #daa520;
   animation: pulse 2s infinite;
 }
@@ -89,6 +98,20 @@
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 180px;
+}
+
+/* Botón menú compacto (solo icono) en pantallas pequeñas */
+.btn-menu.compact {
+  min-width: auto;
+  padding: 0.6rem 0.9rem;
+  font-size: 1.2rem;
+}
+
+/* Divisor en el dropdown */
+.menu-divider {
+  height: 1px;
+  background: rgba(218, 165, 32, 0.3);
+  margin: 0.25rem 0;
 }
 
 .btn-menu:hover {
@@ -414,14 +437,28 @@
 }
 
 /* Responsive */
+@media (max-width: 1100px) {
+  .table-page {
+    padding: 0.5rem 1rem 1rem;
+  }
+  .table-title {
+    font-size: 1.6rem;
+  }
+  .btn-back, .btn-menu {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
 @media (max-width: 768px) {
   .table-page {
-    padding: 1rem;
+    padding: 0.5rem 0.75rem 1rem;
   }
 
   .table-header {
     flex-direction: column;
     align-items: flex-start;
+    margin-bottom: 0.5rem;
   }
 
   .table-info-header {
@@ -429,11 +466,12 @@
   }
 
   .table-title {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
   }
 
   .table-stats {
-    flex-direction: column;
+    flex-direction: row;
+    gap: 0.5rem;
     align-items: center;
   }
 

@@ -1,11 +1,17 @@
-.poker-table-container {
+/* Wrapper que ocupa el espacio real (altura se calcula en JS) */
+.poker-table-wrapper {
   position: relative;
   width: 100%;
-  max-width: 1200px;
-  height: 700px;
-  margin: 0 auto;
+  overflow: visible;
+}
+
+/* Contenedor del diseño base: siempre 1100x700px, escalado por JS */
+.poker-table-container {
+  position: absolute;
+  top: 0;
   background: transparent;
-  padding: 2rem;
+  padding: 5rem 2rem 1rem;
+  overflow: visible;
 }
 
 .poker-table {
@@ -399,7 +405,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
+  font-size: 2rem;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
   color: rgba(218, 165, 32, 0.4);
 }
@@ -456,90 +462,6 @@
 .empty-seat-text {
   color: #a0a0a0;
   font-size: 0.85rem;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .poker-table-container {
-    height: 500px;
-    padding: 1rem;
-  }
-
-  .player-seat.occupied .player-info {
-    width: 150px;
-  }
-
-  .player-header {
-    gap: 4px;
-  }
-
-  .player-avatar {
-    font-size: 1.6rem;
-  }
-
-  .player-level {
-    font-size: 0.6rem;
-    padding: 2px 5px;
-  }
-
-  .player-name {
-    font-size: 0.75rem;
-  }
-
-  .player-balance {
-    padding: 2px 6px;
-  }
-
-  .balance-amount {
-    font-size: 0.7rem;
-  }
-
-  .player-card,
-  .player-card-revealed {
-    width: 45px;
-    height: 65px;
-    font-size: 2rem;
-  }
-
-  .player-cards {
-    gap: 2px;
-  }
-
-  /* Cartas comunitarias en móvil */
-  .community-card-table {
-    width: 45px;
-    height: 65px;
-  }
-
-  .cards-row-table {
-    gap: 4px;
-  }
-
-  .card-rank-top-table,
-  .card-rank-bottom-table {
-    font-size: 0.8rem;
-    top: 3px;
-    left: 3px;
-  }
-
-  .card-rank-bottom-table {
-    bottom: 3px;
-    right: 3px;
-  }
-
-  .card-suit-table {
-    font-size: 1.5rem;
-  }
-
-  .pot-amount {
-    font-size: 0.9rem;
-    padding: 6px 15px;
-  }
-
-  .side-pot-mini {
-    font-size: 0.7rem;
-    padding: 3px 8px;
-  }
 }
 
 /* Indicador de última acción */

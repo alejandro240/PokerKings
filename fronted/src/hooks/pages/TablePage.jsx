@@ -16,7 +16,15 @@ function TablePage({ table, user, onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastShownHandOver, setLastShownHandOver] = useState(null);
+  const [isCompact, setIsCompact] = useState(window.innerWidth < 900);
   const gameInitialized = useRef(false);
+
+  // Detectar tamaño de pantalla para colapsar botones
+  useEffect(() => {
+    const handleResize = () => setIsCompact(window.innerWidth < 900);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Usar el hook de juego de póker (conectado con backend)
   const pokerGame = usePokerGame();
@@ -241,9 +249,12 @@ function TablePage({ table, user, onNavigate }) {
     <div className="table-page">
       {/* Header con información de la mesa */}
       <div className="table-header">
-        <button className="btn-back" onClick={() => onNavigate('lobby')}>
-          ← Salir de la mesa
-        </button>
+        {/* Salir: visible solo en pantallas grandes */}
+        {!isCompact && (
+          <button className="btn-back" onClick={() => onNavigate('lobby')}>
+            ← Salir de la mesa
+          </button>
+        )}
         
         <div className="table-info-header">
           <h2 className="table-title">{table.name}</h2>
@@ -258,20 +269,43 @@ function TablePage({ table, user, onNavigate }) {
 
         {/* Botones de menú y chat */}
         <div className="menu-container">
-          <button className="btn-menu btn-chat">
-            🗣️ Chat
-          </button>
-          
+          {/* Chat: visible solo en pantallas grandes */}
+          {!isCompact && (
+            <button className="btn-menu btn-chat">
+              🗣️ Chat
+            </button>
+          )}
+
           <button 
-            className="btn-menu" 
+            className={`btn-menu${isCompact ? ' compact' : ''}`}
             onClick={() => setShowMenu(!showMenu)}
           >
-            ☰ Menú
+            {isCompact ? '☰' : '☰ Menú'}
           </button>
           
           {/* Dropdown del menú */}
           {showMenu && (
             <div className="menu-dropdown">
+              {/* En modo compacto: Salir y Chat al principio del dropdown */}
+              {isCompact && (
+                <>
+                  <button
+                    className="menu-item"
+                    onClick={() => { setShowMenu(false); onNavigate('lobby'); }}
+                  >
+                    <span className="menu-icon">←</span>
+                    Salir de la mesa
+                    <span className="menu-desc">Volver al lobby</span>
+                  </button>
+                  <button className="menu-item">
+                    <span className="menu-icon">🗣️</span>
+                    Chat
+                    <span className="menu-desc">Abrir el chat</span>
+                  </button>
+                  <div className="menu-divider" />
+                </>
+              )}
+
               {!isSpectator ? (
                 <button 
                   className="menu-item" 

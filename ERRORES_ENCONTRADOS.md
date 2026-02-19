@@ -2,6 +2,7 @@
 
 📅 Fecha: Análisis completo del código base
 
+---
 
 ## 🔴 ERRORES CRÍTICOS (BLOQUEAN FUNCIONALIDAD)
 

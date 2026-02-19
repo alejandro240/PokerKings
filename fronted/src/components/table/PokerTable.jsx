@@ -1,5 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './PokerTable.css';
+
+// Tamaño base del diseño (en px). Todo el layout está pensado para este ancho.
+const BASE_WIDTH = 1100;
+const BASE_HEIGHT = 700;
 
 function PokerTable({ 
   maxPlayers = 6, 
@@ -12,12 +16,30 @@ function PokerTable({
   gamePhase = 'waiting',
   pot = 0,
   sidePots = [],
-  currentPlayerId = null, // ID del jugador que está viendo la mesa,
-  currentUserIndex = null, // Índice del usuario actual
-  currentPlayerIndex = null // Índice del jugador en turno
+  currentPlayerId = null,
+  currentUserIndex = null,
+  currentPlayerIndex = null
 }) {
   // Estado para rastrear qué cartas ya fueron reveladas
   const [revealedCards, setRevealedCards] = useState([]);
+
+  // Escala responsiva: mide el wrapper y escala el contenedor proporcionalmente
+  const wrapperRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  const updateScale = useCallback(() => {
+    if (!wrapperRef.current) return;
+    const availableWidth = wrapperRef.current.offsetWidth;
+    const newScale = Math.min(availableWidth / BASE_WIDTH, 1);
+    setScale(newScale);
+  }, []);
+
+  useEffect(() => {
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    if (wrapperRef.current) observer.observe(wrapperRef.current);
+    return () => observer.disconnect();
+  }, [updateScale]);
   
   // FIX: useRef para evitar re-renders innecesarios de animaciones
   const prevPhaseRef = useRef(gamePhase);
@@ -107,24 +129,24 @@ function PokerTable({
   // Posiciones de los asientos alrededor de la mesa según el número máximo
   const seatPositions = {
     4: [
-      { top: '1%', left: '50%', transform: 'translateX(-50%)' },       // Arriba
+      { top: '0%', left: '50%', transform: 'translateX(-50%)' },       // Arriba
       { top: '50%', right: '2%', transform: 'translateY(-50%)' },      // Derecha
-      { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },    // Abajo
+      { bottom: '0%', left: '50%', transform: 'translateX(-50%)' },    // Abajo
       { top: '50%', left: '2%', transform: 'translateY(-50%)' }        // Izquierda
     ],
     6: [
-      { top: '1%', left: '50%', transform: 'translateX(-50%)' },       // Arriba centro
-      { top: '4%', right: '12%' },                                     // Arriba derecha
-      { bottom: '4%', right: '12%' },                                  // Abajo derecha
-      { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },    // Abajo centro
-      { bottom: '4%', left: '12%' },                                   // Abajo izquierda
-      { top: '4%', left: '12%' }                                       // Arriba izquierda
+      { top: '0%', left: '50%', transform: 'translateX(-50%)' },       // Arriba centro
+      { top: '6%', right: '12%' },                                     // Arriba derecha
+      { bottom: '6%', right: '12%' },                                  // Abajo derecha
+      { bottom: '0%', left: '50%', transform: 'translateX(-50%)' },    // Abajo centro
+      { bottom: '6%', left: '12%' },                                   // Abajo izquierda
+      { top: '6%', left: '12%' }                                       // Arriba izquierda
     ],
     8: [
-      { top: '1%', left: '50%', transform: 'translateX(-50%)' },       // Arriba centro
+      { top: '0%', left: '50%', transform: 'translateX(-50%)' },       // Arriba centro
       { top: '4%', right: '12%' },                                     // Arriba derecha
       { bottom: '4%', right: '12%' },                                  // Abajo derecha
-      { bottom: '1%', left: '50%', transform: 'translateX(-50%)' },    // Abajo centro
+      { bottom: '0%', left: '50%', transform: 'translateX(-50%)' },    // Abajo centro
       { bottom: '4%', left: '12%' },                                   // Abajo izquierda
       { top: '4%', left: '12%' },                                      // Arriba izquierda
       { top: '50%', left: '0.5%', transform: 'translateY(-50%)' },     // Centro izquierda
@@ -165,7 +187,22 @@ function PokerTable({
   }
 
   return (
-    <div className="poker-table-container">
+    <div
+      ref={wrapperRef}
+      className="poker-table-wrapper"
+      style={{ height: `${BASE_HEIGHT * scale}px` }}
+    >
+      <div
+        className="poker-table-container"
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: 'top center',
+          width: `${BASE_WIDTH}px`,
+          height: `${BASE_HEIGHT}px`,
+          left: '50%',
+          marginLeft: `-${BASE_WIDTH / 2}px`,
+        }}
+      >
       {/* Mesa de poker */}
       <div className="poker-table">
         <img 
@@ -327,6 +364,7 @@ function PokerTable({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

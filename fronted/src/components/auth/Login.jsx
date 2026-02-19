@@ -90,7 +90,7 @@ function Login({ onLoginSuccess, onSwitchToRegister }) {
               type="email"
               className="form-input"
               id="email"
-              placeholder="alejandro"
+              placeholder="correo@ejemplo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

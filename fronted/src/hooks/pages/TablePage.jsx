@@ -351,6 +351,7 @@ function TablePage({ table, user, onNavigate }) {
             canCall={pokerGame.canCall}
             canRaise={pokerGame.canRaise}
             canFold={pokerGame.canFold}
+            turnTimeRemaining={pokerGame.turnTimeRemaining}
             onFold={pokerGame.handleFold}
             onCheck={pokerGame.handleCheck}
             onCall={pokerGame.handleCall}

@@ -11,6 +11,7 @@ function Navbar({ user, onLogout, onUpdateUser }) {
   // Estado para controlar qué offcanvas está abierto (solo uno a la vez)
   const [activeOffcanvas, setActiveOffcanvas] = useState(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [navbarExpanded, setNavbarExpanded] = useState(false); // FIX: Toggle sin Bootstrap
 
   // Funciones para abrir offcanvas (cierra cualquier otro abierto)
   const openTrofeos = () => setActiveOffcanvas('trofeos');
@@ -97,17 +98,19 @@ function Navbar({ user, onLogout, onUpdateUser }) {
             <img src="/assets/images/logo.png" alt="Poker Kings" height="100" />
           </a>
 
-          {/* Botón hamburguesa para móvil */}
+          {/* Botón hamburguesa para móvil - FIX: Sin Bootstrap JS */}
           <button 
             className="navbar-toggler" 
             type="button" 
-            data-bs-toggle="collapse" 
-            data-bs-target="#navbarNav"
+            onClick={() => setNavbarExpanded(!navbarExpanded)}
+            aria-controls="navbarNav"
+            aria-expanded={navbarExpanded}
+            aria-label="Toggle navigation"
           >
             <span className="navbar-toggler-icon"></span>
           </button>
 
-          <div className="collapse navbar-collapse" id="navbarNav">
+          <div className={`navbar-collapse ${navbarExpanded ? 'show' : 'collapse'}`} id="navbarNav">
             <ul className="navbar-nav ms-auto">
               {/* 1. Inicio */}
               <li className="nav-item">

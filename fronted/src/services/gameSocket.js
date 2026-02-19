@@ -12,9 +12,16 @@ class GameSocketService {
 
   connect() {
     if (!this.socket) {
+      // FIX: Verificar que el token existe antes de conectar
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ No hay token de autenticación, no se puede conectar al WebSocket');
+        return;
+      }
+      
       this.socket = io(SOCKET_URL, {
         auth: {
-          token: sessionStorage.getItem('token'),
+          token: token,
         },
         reconnection: true,
         reconnectionDelay: 1000,

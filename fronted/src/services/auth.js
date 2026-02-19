@@ -106,8 +106,11 @@ export const authService = {
       }
       
       // Solo normalizar avatar si está vacío o es claramente una ruta de archivo
+      // FIX: Verificar si empieza con http:// o /assets/ en lugar de solo buscar '/'
       const isImagePath = parsedUser.avatar && typeof parsedUser.avatar === 'string' && 
-                         (parsedUser.avatar.includes('/') || 
+                         (parsedUser.avatar.startsWith('http://') || 
+                          parsedUser.avatar.startsWith('https://') || 
+                          parsedUser.avatar.startsWith('/assets/') || 
                           parsedUser.avatar.includes('.png') || 
                           parsedUser.avatar.includes('.jpg') || 
                           parsedUser.avatar.includes('.jpeg') ||

@@ -17,6 +17,7 @@ function AccountModal({ show, onHide, user, onUpdateAvatar }) {
   const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || '🎮');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false); // FIX: Estado de carga
 
   // Encontrar el índice del avatar actual
   useEffect(() => {
@@ -43,10 +44,18 @@ function AccountModal({ show, onHide, user, onUpdateAvatar }) {
     setHasChanges(AVATAR_OPTIONS[newIndex] !== user?.avatar);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (onUpdateAvatar && hasChanges) {
-      onUpdateAvatar(selectedAvatar);
-      setHasChanges(false);
+      // FIX: Mostrar indicador de carga
+      setSaving(true);
+      try {
+        await onUpdateAvatar(selectedAvatar);
+        setHasChanges(false);
+      } catch (error) {
+        console.error('Error guardando avatar:', error);
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -149,9 +158,18 @@ function AccountModal({ show, onHide, user, onUpdateAvatar }) {
           <button 
             className="btn-modal btn-save" 
             onClick={handleSave}
-            disabled={!hasChanges}
+            disabled={!hasChanges || saving}
           >
-            {hasChanges ? '💾 Guardar Cambios' : '✓ Sin Cambios'}
+            {saving ? (
+              <>
+                <span className="spinner">⏳</span>
+                Guardando...
+              </>
+            ) : hasChanges ? (
+              '💾 Guardar Cambios'
+            ) : (
+              '✓ Sin Cambios'
+            )}
           </button>
         </div>
       </div>

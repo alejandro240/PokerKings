@@ -8,7 +8,8 @@ import { gameSocket } from '../services/gameSocket';
 const usePokerGame = () => {
   // Game state
   const [gameId, setGameId] = useState(null);
-  const [gamePhase, setGamePhase] = useState('waiting'); // waiting, pre-flop, flop, turn, river, showdown
+  const [gamePhase, setGamePhase] = useState('waiting'); // pre-flop, flop, turn, river, showdown
+  const [gameStatus, setGameStatus] = useState('waiting'); // waiting, active, completed 
   const [pot, setPot] = useState(0);
   const [sidePots, setSidePots] = useState([]);
   const [communityCards, setCommunityCards] = useState([]);
@@ -46,7 +47,9 @@ const usePokerGame = () => {
       
       if (gameState) {
         setGameId(gameState.id);
-        setGamePhase(gameState.phase || gameState.status || 'waiting');
+        // FIX: Separar phase y status correctamente
+        setGamePhase(gameState.phase || 'waiting');
+        setGameStatus(gameState.status || 'waiting');
         setPot(gameState.pot || 0);
         setSidePots(gameState.sidePots || []);
         setCommunityCards(gameState.communityCards || []);
@@ -66,6 +69,8 @@ const usePokerGame = () => {
           // Encontrar al jugador actual
           const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
           currentIdx = gameState.players.findIndex(p => p.userId === currentUser.id);
+          
+          // FIX: Manejar caso cuando currentIdx === -1 (espectador)
           if (currentIdx !== -1) {
             setPlayerIndex(currentIdx);
             const currentPlayer = gameState.players[currentIdx];
@@ -77,6 +82,14 @@ const usePokerGame = () => {
             if (gameState.currentPlayerIndex === currentIdx || !currentPlayer.lastAction) {
               setPlayerHasActed(false);
             }
+          } else {
+            // Usuario es espectador, establecer valores por defecto
+            setPlayerIndex(-1);
+            setPlayerChips(0);
+            setPlayerBet(0);
+            setPlayerHoleCards([]);
+            setPlayerHasFolded(false);
+            setPlayerHasActed(false);
           }
         }
         
@@ -127,11 +140,13 @@ const usePokerGame = () => {
     });
 
     return () => {
-      // Limpiar listeners al desmontar
-      gameSocket.off('gameStateUpdated', null);
-      gameSocket.off('phaseChanged', null);
-      gameSocket.off('showdown', null);
-      gameSocket.off('handOver', null);
+      // FIX: Pasar las mismas referencias de funciones para limpiar correctamente
+      // No hay referencias específicas guardadas, así que usamos off sin callback
+      // para remover todos los listeners de ese evento
+      gameSocket.off('gameStateUpdated');
+      gameSocket.off('phaseChanged');
+      gameSocket.off('showdown');
+      gameSocket.off('handOver');
     };
   }, []);
 
@@ -291,6 +306,7 @@ const usePokerGame = () => {
     // Game state
     gameId,
     gamePhase,
+    gameStatus,
     pot,
     sidePots,
     communityCards,

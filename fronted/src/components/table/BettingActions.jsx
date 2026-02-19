@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import './BettingActions.css';
 
-function BettingActions({ 
+// FIX: Memoización para evitar re-renders innecesarios
+const BettingActions = React.memo(function BettingActions({ 
   playerChips = 0, 
   currentBet = 0, 
   minRaise = 0,
@@ -11,6 +12,7 @@ function BettingActions({
   canCall = false,
   canRaise = false,
   canFold = false,
+  turnTimeRemaining = 30, // FIX: Recibir tiempo restante como prop
   onFold,
   onCheck,
   onCall,
@@ -142,11 +144,16 @@ function BettingActions({
       <div className="turn-timer">
         <div className="timer-label">⏱️ Tiempo restante</div>
         <div className="timer-bar">
-          <div className="timer-fill" style={{ width: '75%' }}></div>
+          {/* FIX: Timer dinámico basado en turnTimeRemaining */}
+          <div 
+            className="timer-fill" 
+            style={{ width: `${(turnTimeRemaining / 30) * 100}%` }}
+          ></div>
         </div>
+        <div className="timer-seconds">{turnTimeRemaining}s</div>
       </div>
     </div>
   );
-}
+});
 
 export default BettingActions;

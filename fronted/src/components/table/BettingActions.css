@@ -344,6 +344,15 @@
   transition: width 1s linear;
 }
 
+/* FIX: Mostrar segundos restantes */
+.timer-seconds {
+  text-align: center;
+  color: #4ade80;
+  font-size: 1rem;
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .betting-actions-container {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './PokerTable.css';
 
 function PokerTable({ 
@@ -18,6 +18,11 @@ function PokerTable({
 }) {
   // Estado para rastrear qué cartas ya fueron reveladas
   const [revealedCards, setRevealedCards] = useState([]);
+  
+  // FIX: useRef para evitar re-renders innecesarios de animaciones
+  const prevPhaseRef = useRef(gamePhase);
+  const prevCardsLengthRef = useRef(communityCards.length);
+  
   // Obtener ruta de imagen de carta (e.g., "AS" → "/assets/images/AS.png")
   const getCardImage = (card) => {
     if (!card || card.length < 2) return null;
@@ -62,9 +67,20 @@ function PokerTable({
 
   // Efecto para revelar cartas nuevas con delay
   useEffect(() => {
+    // FIX: Solo ejecutar si realmente cambió la fase o el número de cartas
+    const phaseChanged = prevPhaseRef.current !== gamePhase;
+    const cardsChanged = prevCardsLengthRef.current !== communityCards.length;
+    
     // Resetear cuando cambia la fase a waiting (nueva mano)
     if (gamePhase === 'waiting') {
       setRevealedCards([]);
+      prevPhaseRef.current = gamePhase;
+      prevCardsLengthRef.current = communityCards.length;
+      return;
+    }
+
+    // Solo animar si hubo cambio real
+    if (!phaseChanged && !cardsChanged) {
       return;
     }
 
@@ -82,6 +98,10 @@ function PokerTable({
         }, index * 200); // Delay escalonado para animación
       }
     });
+    
+    // Actualizar referencias
+    prevPhaseRef.current = gamePhase;
+    prevCardsLengthRef.current = communityCards.length;
   }, [gamePhase, communityCards.length]);
   
   // Posiciones de los asientos alrededor de la mesa según el número máximo

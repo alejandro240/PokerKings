@@ -96,12 +96,39 @@ class GameSocketService {
 
   // Unirse a la sala de una mesa
   joinTable(tableId) {
-    if (this.socket) {
-      console.log(`📤 Emitiendo table:join para ${tableId}`);
-      this.socket.emit('table:join', tableId);
-    } else {
-      console.error('❌ Socket no conectado, no se puede unir a la mesa');
-    }
+    return new Promise((resolve, reject) => {
+      // Asegurar que está conectado
+      if (!this.isConnected()) {
+        console.warn('⚠️ Socket no conectado, conectando...');
+        this.connect();
+      }
+      
+      // Esperar a que esté conectado
+      const checkConnection = setInterval(() => {
+        if (this.isConnected()) {
+          clearInterval(checkConnection);
+          
+          console.log(`📤 Emitiendo table:join para ${tableId}`);
+          this.socket.emit('table:join', tableId, (response) => {
+            if (response?.success) {
+              console.log(`✅ Confirmado: unido a sala table_${tableId}`);
+              resolve(response);
+            } else {
+              console.error('❌ Error al unirse a la sala:', response);
+              reject(new Error('No se pudo unir a la sala'));
+            }
+          });
+        }
+      }, 100);
+
+      // Timeout de 5 segundos
+      setTimeout(() => {
+        clearInterval(checkConnection);
+        if (!this.isConnected()) {
+          reject(new Error('Socket no se pudo conectar en 5 segundos'));
+        }
+      }, 5000);
+    });
   }
 
   // Salir de una partida

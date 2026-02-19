@@ -64,9 +64,15 @@ function TablePage({ table, user, onNavigate }) {
         setLoading(true);
         setError(null);
 
-        // Unirse a la sala de WebSocket de la mesa
+        // ESPERAR a unirse a la sala de WebSocket de la mesa ANTES de hacer startGame
         console.log(`🔌 Uniéndose a sala de WebSocket: table_${table.id}`);
-        gameSocket.joinTable(table.id);
+        try {
+          await gameSocket.joinTable(table.id);
+          console.log(`✅ Socket unido a la sala. Procediendo con startGame...`);
+        } catch (socketErr) {
+          console.error('⚠️ Error al unirse a WebSocket:', socketErr.message);
+          // Continuar de todas formas, pero puede haber problemas de sync
+        }
 
         // Crear lista de jugadores para el backend
         const playerIds = [user.id]; // Comenzar con el usuario actual
@@ -84,8 +90,13 @@ function TablePage({ table, user, onNavigate }) {
         if (gameId) {
           // Guardar el ID del juego
           pokerGame.setGameId(gameId);
+
+          // Hidratar estado local inmediatamente con jugadores
+          if (Array.isArray(gameData.players)) {
+            setPlayers(gameData.players);
+          }
           
-          // El hook usePokerGame recibirá actualizaciones via WebSocket
+          // El hook usePokerGame recibirá actualizaciones de todo el estado via WebSocket
           console.log('✅ Juego iniciado/unido:', gameId);
         } else {
           console.error('⚠️ No se recibió ID de juego del backend', response.data);
@@ -110,7 +121,7 @@ function TablePage({ table, user, onNavigate }) {
   const handleStandUp = async () => {
     try {
       if (pokerGame.gameId) {
-        await gameAPI.leaveGame(pokerGame.gameId);
+        await gameAPI.leaveGame(pokerGame.gameId, user?.id);
       }
       setIsSpectator(true);
       setShowMenu(false);
@@ -124,9 +135,21 @@ function TablePage({ table, user, onNavigate }) {
   const handleSitDown = async () => {
     try {
       if (table && user) {
+        // Re-unirse a la sala de WebSocket (por si se había desconectado)
+        try {
+          await gameSocket.joinTable(table.id);
+          console.log(`✅ Socket re-unido a la sala. Procediendo con startGame...`);
+        } catch (socketErr) {
+          console.error('⚠️ Error al re-unirse a WebSocket:', socketErr.message);
+        }
+
         const response = await gameAPI.startGame(table.id, [user.id]);
-        if (response.data) {
-          pokerGame.setGameId(response.data.id);
+        const gameData = response.data?.game || response.data;
+        if (gameData?.id) {
+          pokerGame.setGameId(gameData.id);
+          if (Array.isArray(gameData.players)) {
+            setPlayers(gameData.players);
+          }
         }
       }
       setIsSpectator(false);
@@ -138,6 +161,18 @@ function TablePage({ table, user, onNavigate }) {
 
   // Manejar abandonar partida
   const handleLeaveTable = async () => {
+    const performLeave = async () => {
+      try {
+        if (pokerGame.gameId) {
+          await gameAPI.leaveGame(pokerGame.gameId, user?.id);
+        }
+      } catch (leaveErr) {
+        console.error('Error abandonando el juego:', leaveErr);
+      }
+      toast.success('Has abandonado la mesa', { id: 'leave-success' });
+      onNavigate('lobby');
+    };
+
     toast.dismiss('leave-confirm');
     
     toast((t) => (
@@ -145,10 +180,9 @@ function TablePage({ table, user, onNavigate }) {
         <p style={{ marginBottom: '1rem' }}>¿Abandonar la partida?</p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
           <button
-            onClick={() => {
+            onClick={async () => {
               toast.dismiss(t.id);
-              toast.success('Has abandonado la mesa', { id: 'leave-success' });
-              onNavigate('home');
+              await performLeave();
             }}
             style={{
               background: '#c41e3a',
@@ -249,7 +283,7 @@ function TablePage({ table, user, onNavigate }) {
     <div className="table-page">
       {/* Header con información de la mesa */}
       <div className="table-header">
-        <button className="btn-back" onClick={() => onNavigate('lobby')}>
+        <button className="btn-back" onClick={handleLeaveTable}>
           ← Salir de la mesa
         </button>
         
@@ -257,7 +291,7 @@ function TablePage({ table, user, onNavigate }) {
           <h2 className="table-title">{table.name}</h2>
           <div className="table-stats">
             <span className="stat">💰 Ciegas: {table.smallBlind}/{table.bigBlind}</span>
-            <span className="stat">👥 Jugadores: {pokerGame.players.filter(p => p).length}/{table.maxPlayers}</span>
+            <span className="stat">👥 Jugadores: {pokerGame.players.filter(p => p && !p.isSittingOut).length}/{table.maxPlayers}</span>
             {table.isPrivate && <span className="stat">🔒 Privada</span>}
             {isSpectator && <span className="stat spectator-badge">👁️ Modo Espectador</span>}
             <span className="stat">🎮 Fase: {pokerGame.gamePhase}</span>

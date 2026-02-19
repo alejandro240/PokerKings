@@ -19,13 +19,18 @@ export const setupTableSocket = (io, socket) => {
     }
   };
 
-  socket.on('table:join', async (tableId) => {
+  socket.on('table:join', async (tableId, callback) => {
     console.log(`🔌 Socket ${socket.id} uniéndose a sala table_${tableId}`);
     socket.data.tableId = tableId;
     socket.join(`table_${tableId}`);
     const table = await Table.findByPk(tableId);
     socket.emit('table:state', table);
     console.log(`✅ Socket ${socket.id} unido a sala table_${tableId}`);
+    
+    // Enviar confirmación al cliente
+    if (callback && typeof callback === 'function') {
+      callback({ success: true, tableId });
+    }
   });
 
   socket.on('table:leave', async (tableId) => {

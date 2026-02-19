@@ -82,14 +82,30 @@ function App() {
   const handleJoinTable = async (table) => {
     try {
       console.log('Unirse a mesa:', table)
-      // Establecer la mesa actual
-      setCurrentTable(table)
+      let resolvedTable = table
+
+      // Intentar unirse a la mesa en backend (best-effort)
+      try {
+        const response = await tableAPI.joinTable(table.id)
+        resolvedTable = response.data?.table || table
+      } catch (joinErr) {
+        console.warn('No se pudo registrar joinTable, continuando con startGame en TablePage:', joinErr?.response?.data || joinErr.message)
+      }
+
+      // Entrar a la vista de mesa aunque joinTable falle
+      setCurrentTable(resolvedTable)
       setCurrentView('table')
-      // Aquí después harás la llamada al backend para unirse realmente
-      // const response = await tableAPI.joinTable(table.id)
+
+      // Recargar lista del lobby para reflejar conteos
+      try {
+        const tablesResponse = await tableAPI.getAllTables()
+        setTables(tablesResponse.data || [])
+      } catch (err) {
+        console.warn('No se pudo recargar mesas tras unirse')
+      }
     } catch (err) {
       console.error('Error uniéndose a mesa:', err)
-      setError('No se pudo unir a la mesa')
+      setError(err?.response?.data?.message || 'No se pudo unir a la mesa')
     }
   }
 

@@ -43,10 +43,33 @@ export const startGame = async (req, res) => {
         ? JSON.parse(activeGame.players || '[]')
         : (activeGame.players || []);
       
-      // Verificar si el usuario ya está en el juego
-      const userAlreadyInGame = gamePlayers.some(p => playerIds.includes(p.userId));
+      const newPlayerId = playerIds[0];
+      const userInGameIndex = gamePlayers.findIndex(p => p.userId === newPlayerId);
+      const activeSeats = gamePlayers.filter(p => !p.isSittingOut).length;
+      const userAlreadyInGame = userInGameIndex !== -1;
       
       if (userAlreadyInGame) {
+        // Si estaba sentado fuera, permitir reingreso para la siguiente mano
+        if (gamePlayers[userInGameIndex]?.isSittingOut) {
+          gamePlayers[userInGameIndex].isSittingOut = false;
+          gamePlayers[userInGameIndex].folded = true;
+          gamePlayers[userInGameIndex].hand = null;
+          gamePlayers[userInGameIndex].holeCards = null;
+          gamePlayers[userInGameIndex].committed = 0;
+          gamePlayers[userInGameIndex].betInPhase = 0;
+          gamePlayers[userInGameIndex].lastAction = null;
+
+          activeGame.players = gamePlayers;
+          activeGame.changed('players', true);
+          await activeGame.save();
+
+          const updatedActiveSeats = gamePlayers.filter(p => !p.isSittingOut).length;
+          await table.update({
+            currentPlayers: Math.min(table.maxPlayers, updatedActiveSeats),
+            status: updatedActiveSeats >= 2 ? 'playing' : 'waiting'
+          });
+        }
+
         console.log('✅ Usuario ya está en el juego, devolviendo estado actual');
         return res.status(200).json({
           success: true,
@@ -55,13 +78,12 @@ export const startGame = async (req, res) => {
         });
       } else {
         // Permitir unirse a juego activo para entrar en la siguiente mano
-        if (gamePlayers.length >= table.maxPlayers) {
+        if (activeSeats >= table.maxPlayers) {
           return res.status(400).json({
             error: 'La mesa está llena'
           });
         }
 
-        const newPlayerId = playerIds[0];
         const user = await User.findByPk(newPlayerId);
         if (!user) {
           return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -82,8 +104,10 @@ export const startGame = async (req, res) => {
         activeGame.changed('players', true);
         await activeGame.save();
 
+        const updatedActiveSeats = gamePlayers.filter(p => !p.isSittingOut).length;
         await table.update({
-          currentPlayers: Math.min(table.maxPlayers, gamePlayers.length)
+          currentPlayers: Math.min(table.maxPlayers, updatedActiveSeats),
+          status: updatedActiveSeats >= 2 ? 'playing' : 'waiting'
         });
 
         const updatedState = await getGameState(activeGame.id);
@@ -112,9 +136,25 @@ export const startGame = async (req, res) => {
         ? JSON.parse(waitingGame.players || '[]')
         : (waitingGame.players || []);
 
-      const alreadyInGame = gamePlayers.some(p => playerIds.includes(p.userId));
+      const newPlayerId = playerIds[0];
+      const userInGameIndex = gamePlayers.findIndex(p => p.userId === newPlayerId);
+      const alreadyInGame = userInGameIndex !== -1;
+
+      if (alreadyInGame && gamePlayers[userInGameIndex]?.isSittingOut) {
+        gamePlayers[userInGameIndex].isSittingOut = false;
+        gamePlayers[userInGameIndex].folded = true;
+        gamePlayers[userInGameIndex].hand = null;
+        gamePlayers[userInGameIndex].holeCards = null;
+        gamePlayers[userInGameIndex].committed = 0;
+        gamePlayers[userInGameIndex].betInPhase = 0;
+        gamePlayers[userInGameIndex].lastAction = null;
+
+        waitingGame.players = gamePlayers;
+        waitingGame.changed('players', true);
+        await waitingGame.save();
+      }
+
       if (!alreadyInGame) {
-        const newPlayerId = playerIds[0];
         const user = await User.findByPk(newPlayerId);
         if (user) {
           gamePlayers.push({ userId: user.id, chips: Math.min(user.chips, 10000) });
@@ -124,9 +164,16 @@ export const startGame = async (req, res) => {
         }
       }
 
-      if (gamePlayers.length >= 2) {
+      const seatedPlayers = gamePlayers.filter(p => !p.isSittingOut);
+
+      await table.update({
+        status: seatedPlayers.length >= 2 ? 'playing' : 'waiting',
+        currentPlayers: Math.min(table.maxPlayers, seatedPlayers.length)
+      });
+
+      if (seatedPlayers.length >= 2) {
         const players = await User.findAll({
-          where: { id: gamePlayers.map(p => p.userId) },
+          where: { id: seatedPlayers.map(p => p.userId) },
           attributes: ['id', 'chips']
         });
 
@@ -195,6 +242,11 @@ export const startGame = async (req, res) => {
         communityCards: [],
         currentBet: 0,
         pot: 0
+      });
+
+      await table.update({
+        status: 'waiting',
+        currentPlayers: Math.min(table.maxPlayers, players.length)
       });
 
       const waitingState = await getGameState(waitingGameCreated.id, false);
@@ -512,6 +564,11 @@ export const leaveGame = async (req, res) => {
   try {
     const { gameId } = req.params;
     const { userId } = req.body;
+    const playerUserId = userId || req.userId;
+
+    if (!playerUserId) {
+      return res.status(400).json({ error: 'userId es requerido' });
+    }
 
     const game = await Game.findByPk(gameId);
     if (!game) {
@@ -526,7 +583,7 @@ export const leaveGame = async (req, res) => {
 
     // Marcar al jugador como sitting out
     const players = game.players;
-    const playerIndex = players.findIndex(p => p.userId === userId);
+    const playerIndex = players.findIndex(p => p.userId === playerUserId);
 
     if (playerIndex === -1) {
       return res.status(400).json({ 
@@ -535,6 +592,12 @@ export const leaveGame = async (req, res) => {
     }
 
     players[playerIndex].isSittingOut = true;
+    players[playerIndex].folded = true;
+    players[playerIndex].hand = null;
+    players[playerIndex].holeCards = null;
+    players[playerIndex].committed = 0;
+    players[playerIndex].betInPhase = 0;
+    players[playerIndex].lastAction = null;
     
     // Si es el turno del jugador que se va, mover al siguiente
     if (game.currentPlayerIndex === playerIndex) {
@@ -546,6 +609,22 @@ export const leaveGame = async (req, res) => {
     }
 
     await game.update({ players });
+
+    const table = await Table.findByPk(game.tableId);
+    if (table) {
+      const activeSeats = players.filter(p => !p.isSittingOut).length;
+      if (activeSeats < 2) {
+        game.status = 'waiting';
+        game.phase = 'waiting';
+        game.currentBet = 0;
+      }
+      await game.save();
+
+      await table.update({
+        currentPlayers: Math.max(0, activeSeats),
+        status: activeSeats >= 2 ? 'playing' : 'waiting'
+      });
+    }
 
     res.json({
       success: true,

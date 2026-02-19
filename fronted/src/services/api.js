@@ -106,8 +106,8 @@ export const gameAPI = {
     apiClient.get(`/games/${gameId}/hands/${handId}`),
   
   // Salir de un juego
-  leaveGame: (gameId) =>
-    apiClient.post(`/games/${gameId}/leave`),
+  leaveGame: (gameId, userId) =>
+    apiClient.post(`/games/${gameId}/leave`, { userId }),
 };
 
 // ============= TIENDA =============

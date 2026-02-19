@@ -39,9 +39,17 @@ function TablePage({ table, user, onNavigate }) {
 
   useEffect(() => {
     if (pokerGame.lastHandResult) {
-      const key = `${pokerGame.lastHandResult.winnerId}-${pokerGame.lastHandResult.potWon}`;
+      const idsKey = (pokerGame.lastHandResult.winnerIds || []).join(',');
+      const key = `${idsKey || pokerGame.lastHandResult.winnerId}-${pokerGame.lastHandResult.potWon}`;
       if (key !== lastShownHandOver) {
-        toast.success(`🏆 Ganador: ${pokerGame.lastHandResult.winnerName} (+${(pokerGame.lastHandResult.potWon || 0).toLocaleString()} PK)`);
+        const winners = pokerGame.lastHandResult.winners || [];
+        const potText = (pokerGame.lastHandResult.potWon ?? 0).toLocaleString();
+        if (winners.length > 1) {
+          const names = winners.map(w => w.username).filter(Boolean).join(', ');
+          toast.success(`🤝 Empate: ${names || pokerGame.lastHandResult.winnerName} (Bote: ${potText} PK)`);
+        } else {
+          toast.success(`🏆 Ganador: ${pokerGame.lastHandResult.winnerName} (+${potText} PK)`);
+        }
         setLastShownHandOver(key);
       }
     }

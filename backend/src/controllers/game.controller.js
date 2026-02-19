@@ -54,11 +54,50 @@ export const startGame = async (req, res) => {
           game: await getGameState(activeGame.id)
         });
       } else {
-        // El usuario no está en el juego, pero el juego ya está activo
-        // No permitir que se una un nuevo usuario a un juego ya iniciado
-        console.log('⚠️  El juego ya está activo y no puedes unirte a mitad de juego');
-        return res.status(400).json({
-          error: 'El juego ya está en progreso. Espera a que termine para unirte.'
+        // Permitir unirse a juego activo para entrar en la siguiente mano
+        if (gamePlayers.length >= table.maxPlayers) {
+          return res.status(400).json({
+            error: 'La mesa está llena'
+          });
+        }
+
+        const newPlayerId = playerIds[0];
+        const user = await User.findByPk(newPlayerId);
+        if (!user) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        gamePlayers.push({
+          userId: user.id,
+          chips: Math.min(user.chips, 10000),
+          committed: 0,
+          hand: null,
+          folded: true,
+          isSittingOut: false,
+          lastAction: null,
+          betInPhase: 0
+        });
+
+        activeGame.players = gamePlayers;
+        activeGame.changed('players', true);
+        await activeGame.save();
+
+        await table.update({
+          currentPlayers: Math.min(table.maxPlayers, gamePlayers.length)
+        });
+
+        const updatedState = await getGameState(activeGame.id);
+        try {
+          const io = getIO();
+          io.to(`table_${tableId}`).emit('gameStateUpdated', updatedState);
+        } catch (err) {
+          console.warn('⚠️  No se pudo emitir evento WebSocket:', err.message);
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'Te uniste a la mesa. Entrarás en la siguiente mano.',
+          game: updatedState
         });
       }
     }
@@ -276,13 +315,20 @@ export const playerAction = async (req, res) => {
     }
 
     if (result.handOver) {
-      let winnerId = result.winner?.userId || result.winner?.id;
+      const winners = Array.isArray(result.winners) ? result.winners : [];
+      const winnerIds = winners.map(w => w.userId).filter(Boolean);
+      let winnerId = result.winner?.userId || result.winner?.id || winnerIds[0] || null;
       let winnerName = 'Desconocido';
-      let potWon = result.potWon || (result.winners || []).reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+      let potWon = result.potWon ?? winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
 
       try {
-        const winnerUser = winnerId ? await User.findByPk(winnerId) : null;
-        winnerName = winnerUser?.username || winnerName;
+        if (winners.length > 1) {
+          const names = winners.map(w => w.username).filter(Boolean);
+          winnerName = names.length > 0 ? `Empate: ${names.join(', ')}` : 'Empate';
+        } else {
+          const winnerUser = winnerId ? await User.findByPk(winnerId) : null;
+          winnerName = winnerUser?.username || winners[0]?.username || winnerName;
+        }
 
         const io = getIO();
         const table = await Table.findByPk(game.tableId);
@@ -292,6 +338,8 @@ export const playerAction = async (req, res) => {
             tableId: table.id,
             winnerId,
             winnerName,
+            winnerIds,
+            winners,
             potWon
           });
         }
@@ -305,6 +353,8 @@ export const playerAction = async (req, res) => {
         winner: result.winner || null,
         winnerId,
         winnerName,
+        winnerIds,
+        winners,
         potWon,
         gameState: result.gameState || await getGameState(gameId, false)
       });

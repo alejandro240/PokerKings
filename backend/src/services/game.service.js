@@ -417,7 +417,11 @@ const finishByFold = async (game) => {
  * Resolver showdown calculando la mejor mano
  */
 const finishShowdown = async (game) => {
-  const community = game.communityCards || [];
+  const community = Array.isArray(game.communityCards)
+    ? game.communityCards
+    : (typeof game.communityCards === 'string'
+        ? JSON.parse(game.communityCards || '[]')
+        : []);
   const contenders = getActivePlayers(game.players);
 
   console.log('[DEBUG][SHOWDOWN] Starting showdown...');
@@ -533,20 +537,43 @@ const finishShowdown = async (game) => {
     }
   }
 
-  // Get primary winner and all winners info
-  const primaryWinner = distributedPlayers.find(p => p.userId === contenders[0].userId);
+  // Build winners info
+  const winnerUsers = await User.findAll({
+    where: { id: Array.from(allWinners) },
+    attributes: ['id', 'username']
+  });
+  const winnerUserMap = new Map(winnerUsers.map(u => [u.id, u.username]));
+
   const winners = Array.from(allWinners).map(userId => {
     const user = game.players.find(p => p.userId === userId);
     const details = winnerDetails[userId];
     return {
       userId,
-      username: user?.username || 'Unknown',
+      username: winnerUserMap.get(userId) || user?.username || 'Unknown',
       chips: distributedPlayers.find(p => p.userId === userId)?.chips || 0,
       hand: details?.hand,
       description: details?.description,
       chipsWon: details?.chipsWon || 0
     };
   });
+
+  // Get primary winner (used for handOver winnerName / winnerId compatibility)
+  // Pick winner with highest chipsWon; tie-break by seat order from distributedPlayers
+  let primaryWinnerUserId = null;
+  if (winners.length > 0) {
+    const sortedWinners = [...winners].sort((a, b) => {
+      if ((b.chipsWon || 0) !== (a.chipsWon || 0)) {
+        return (b.chipsWon || 0) - (a.chipsWon || 0);
+      }
+      const idxA = distributedPlayers.findIndex(p => p.userId === a.userId);
+      const idxB = distributedPlayers.findIndex(p => p.userId === b.userId);
+      return idxA - idxB;
+    });
+    primaryWinnerUserId = sortedWinners[0].userId;
+  }
+  const primaryWinner = primaryWinnerUserId
+    ? distributedPlayers.find(p => p.userId === primaryWinnerUserId)
+    : null;
 
   console.log('[DEBUG][WINNERS] All winners:', winners.map(w => `${w.username} (${w.chipsWon} chips)`).join(', '));
 
@@ -567,7 +594,7 @@ const finishShowdown = async (game) => {
 
   game.status = 'finished';
   game.phase = 'showdown';
-  game.winnerId = primaryWinner.userId;
+  game.winnerId = primaryWinner?.userId || null;
   game.winnerIds = Array.from(allWinners);
   game.winners = winners;
   game.pot = 0;
@@ -618,8 +645,8 @@ const advanceGamePhase = async (game) => {
 
   await game.update({
     phase: game.phase,
-    communityCards: JSON.stringify(game.communityCards),
-    deck: JSON.stringify(game.deck),
+    communityCards: game.communityCards,
+    deck: game.deck,
     players: game.players,
     currentBet: 0,
     pot: game.pot,
@@ -814,6 +841,8 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
             success: true,
             handOver: true,
             winner: foldResult.winner,
+            winners: foldResult.winners || [],
+            potWon: foldResult.potWon || 0,
             gameState: await getGameState(game.id, false)
           };
         }
@@ -878,6 +907,8 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
         success: true,
         handOver: true,
         winner: foldResult.winner,
+        winners: foldResult.winners || [],
+        potWon: foldResult.potWon || 0,
         gameState: await getGameState(game.id, false)
       };
     }
@@ -927,6 +958,8 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
           success: true,
           handOver: true,
           winner: showdownResult.winner,
+          winners: showdownResult.winners || [],
+          potWon: showdownResult.potWon || 0,
           gameState: await getGameState(game.id, false)
         };
       }

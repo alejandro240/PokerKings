@@ -4,21 +4,20 @@
 import { Table, Game } from '../models/index.js';
 import { Op } from 'sequelize';
 
-const EMPTY_TABLE_TIMEOUT = 40000; // 40 segundos en milisegundos
+const EMPTY_TABLE_TIMEOUT = 60000; // 60 segundos en milisegundos
 
 /**
- * Limpiar mesas vacías que han estado sin jugadores por más de 40 segundos
+ * Limpiar mesas vacías que han estado sin jugadores por más de 60 segundos
  */
 export const cleanupEmptyTables = async () => {
   try {
     const now = new Date();
     const timeoutDate = new Date(now.getTime() - EMPTY_TABLE_TIMEOUT);
 
-    // Buscar mesas con 0 jugadores que no tengan juego activo
+    // Buscar mesas con 0 jugadores (sin importar status)
     const emptyTables = await Table.findAll({
       where: {
         currentPlayers: 0,
-        status: { [Op.ne]: 'playing' },
         updatedAt: { [Op.lt]: timeoutDate }
       }
     });
@@ -27,11 +26,10 @@ export const cleanupEmptyTables = async () => {
       console.log(`🧹 Limpiando ${emptyTables.length} mesa(s) vacía(s)...`);
       
       for (const table of emptyTables) {
-        // Borrar juegos asociados que estén finalizados
+        // Borrar todos los juegos asociados para evitar violaciones de FK
         await Game.destroy({
           where: {
-            tableId: table.id,
-            status: 'finished'
+            tableId: table.id
           }
         });
 

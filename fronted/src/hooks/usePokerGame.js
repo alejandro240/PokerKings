@@ -170,7 +170,9 @@ const usePokerGame = () => {
           setLastHandResult({
             winnerId: data.winnerId || data.winner?.userId || data.winner?.id,
             winnerName: data.winnerName || data.winner?.username || 'Desconocido',
-            potWon: data.potWon || 0
+            winnerIds: data.winnerIds || [],
+            winners: data.winners || [],
+            potWon: data.potWon ?? 0
           });
           setPlayerHasActed(false);
         }

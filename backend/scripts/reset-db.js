@@ -28,7 +28,7 @@ async function recreateDatabase() {
     const hashedPassword = await bcrypt.hash('password123', 10);
 
     const user1 = await User.create({
-      username: 'jugador1',
+      username: 'pavlo',
       email: 'jugador1@pokerkings.com',
       password: hashedPassword,
       chips: 5000,
@@ -43,7 +43,7 @@ async function recreateDatabase() {
     console.log(`   ✅ jugador1 creado: ${user1.id}`);
 
     const user2 = await User.create({
-      username: 'jugador2',
+      username: 'pepe',
       email: 'jugador2@pokerkings.com',
       password: hashedPassword,
       chips: 3000,

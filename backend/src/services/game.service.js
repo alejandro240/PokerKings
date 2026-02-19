@@ -124,6 +124,7 @@ export const initializeGame = async (tableId, playersData) => {
     // Repartir cartas iniciales (2 por jugador)
     players.forEach(player => {
       player.hand = [deck.pop(), deck.pop()];
+      player.holeCards = [...player.hand];
     });
 
     // El siguiente jugador en turno será quien actúa primero (después de BB)
@@ -190,6 +191,7 @@ export const activateWaitingGame = async (game, playersData) => {
 
   players.forEach(player => {
     player.hand = [deck.pop(), deck.pop()];
+    player.holeCards = [...player.hand];
   });
 
   const currentPlayerIndex = players.length === 2
@@ -250,9 +252,11 @@ const startNextHand = async (game) => {
   players.forEach((p) => {
     if (p.chips > 0 && !p.isSittingOut) {
       p.hand = [deck.pop(), deck.pop()];
+      p.holeCards = [...p.hand];
       p.folded = false;
     } else {
       p.hand = null;
+      p.holeCards = null;
       p.folded = true;
     }
   });
@@ -367,6 +371,11 @@ const finishByFold = async (game) => {
     if (pot.eligiblePlayerIndices.includes(winnerIndex)) {
       winningsFromPots += pot.amount;
     }
+  }
+
+  // Fallback: if eligible pots are zero, use total pot amount
+  if (winningsFromPots === 0) {
+    winningsFromPots = sidePots.reduce((sum, pot) => sum + (pot.amount || 0), 0);
   }
 
   // Add the winnings to winner's chips
@@ -548,7 +557,10 @@ const finishShowdown = async (game) => {
   // ¿Hay suficientes jugadores con fichas para seguir?
   const playersWithChips = game.players.filter(p => p.chips > 0 && !p.isSittingOut);
   if (playersWithChips.length >= 2) {
-    const potWon = winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+    let potWon = winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+    if (potWon === 0) {
+      potWon = sidePots.reduce((sum, pot) => sum + (pot.amount || 0), 0);
+    }
     await startNextHand(game);
     return { winner: primaryWinner, winners, potWon, handContinues: true };
   }
@@ -564,7 +576,11 @@ const finishShowdown = async (game) => {
 
   await game.save();
 
-  return { winner: primaryWinner, handContinues: false };
+  let potWon = winners.reduce((sum, w) => sum + (w.chipsWon || 0), 0);
+  if (potWon === 0) {
+    potWon = sidePots.reduce((sum, pot) => sum + (pot.amount || 0), 0);
+  }
+  return { winner: primaryWinner, winners, potWon, handContinues: false };
 };
 
 /**

@@ -1,5 +1,5 @@
 import React from 'react';
-import './CommunityCards.css';
+import './CartasComunitarias.css';
 
 const CommunityCards = ({ 
   communityCards = [], 

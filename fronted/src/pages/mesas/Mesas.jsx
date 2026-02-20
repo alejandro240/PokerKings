@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { tableAPI } from '../../services/api';
-import './LobbyPage.css';
+import { tableAPI } from '../../servicios/api';
+import './Mesas.css';
 
 function LobbyPage({ onNavigate, onJoinTable }) {
   const [tables, setTables] = useState([]);
@@ -29,7 +29,7 @@ function LobbyPage({ onNavigate, onJoinTable }) {
   return (
     <div className="lobby-page">
       <div className="lobby-header">
-        <button className="btn-back" onClick={() => onNavigate('home')}>
+        <button className="btn-back" onClick={() => onNavigate('inicio')}>
           ← Volver
         </button>
         <h1 className="lobby-title">🎮 Mesas Disponibles</h1>
@@ -43,7 +43,7 @@ function LobbyPage({ onNavigate, onJoinTable }) {
       ) : tables.length === 0 ? (
         <div className="empty-message">
           <p>No hay mesas disponibles</p>
-          <button onClick={() => onNavigate('create')} className="btn-create-first">
+          <button onClick={() => onNavigate('crear')} className="btn-create-first">
             + Crear Primera Mesa
           </button>
         </div>

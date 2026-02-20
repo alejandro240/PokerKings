@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './BettingActions.css';
+import './AccionesApuesta.css';
 
 // FIX: Memoización para evitar re-renders innecesarios
 const BettingActions = React.memo(function BettingActions({ 

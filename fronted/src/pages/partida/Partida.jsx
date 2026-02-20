@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import PokerTable from '../../components/table/PokerTable';
-import BettingActions from '../../components/table/BettingActions';
-import usePokerGame from '../usePokerGame';
-import { gameAPI } from '../../services/api';
-import { gameSocket } from '../../services/gameSocket';
-import './TablePage.css';
+import PokerTable from './MesaPoker';
+import BettingActions from './AccionesApuesta';
+import usePokerGame from './useJuegoPoker';
+import { gameAPI } from '../../servicios/api';
+import { gameSocket } from '../../servicios/socketJuego';
+import './Partida.css';
 
 function TablePage({ table, user, onNavigate }) {
   const [players, setPlayers] = useState([]);
@@ -148,7 +148,7 @@ function TablePage({ table, user, onNavigate }) {
             onClick={() => {
               toast.dismiss(t.id);
               toast.success('Has abandonado la mesa', { id: 'leave-success' });
-              onNavigate('home');
+              onNavigate('inicio');
             }}
             style={{
               background: '#c41e3a',
@@ -217,7 +217,7 @@ function TablePage({ table, user, onNavigate }) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#e0e0e0' }}>
         <h2>Mesa no encontrada</h2>
-        <button className="btn btn-primary" onClick={() => onNavigate('home')}>
+        <button className="btn btn-primary" onClick={() => onNavigate('inicio')}>
           Volver al inicio
         </button>
       </div>
@@ -238,7 +238,7 @@ function TablePage({ table, user, onNavigate }) {
       <div style={{ padding: '2rem', textAlign: 'center', color: '#ff6b6b' }}>
         <h2>Error</h2>
         <p>{error}</p>
-        <button className="btn btn-primary" onClick={() => onNavigate('lobby')}>
+        <button className="btn btn-primary" onClick={() => onNavigate('mesas')}>
           Volver al lobby
         </button>
       </div>
@@ -251,7 +251,7 @@ function TablePage({ table, user, onNavigate }) {
       <div className="table-header">
         {/* Salir: visible solo en pantallas grandes */}
         {!isCompact && (
-          <button className="btn-back" onClick={() => onNavigate('lobby')}>
+          <button className="btn-back" onClick={() => onNavigate('mesas')}>
             ← Salir de la mesa
           </button>
         )}
@@ -291,7 +291,7 @@ function TablePage({ table, user, onNavigate }) {
                 <>
                   <button
                     className="menu-item"
-                    onClick={() => { setShowMenu(false); onNavigate('lobby'); }}
+                    onClick={() => { setShowMenu(false); onNavigate('mesas'); }}
                   >
                     <span className="menu-icon">←</span>
                     Salir de la mesa

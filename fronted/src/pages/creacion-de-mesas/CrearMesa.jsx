@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './CreateTablePage.css';
+import './CrearMesa.css';
 
 function CreateTablePage({ onNavigate, onCreate }) {
   const [formData, setFormData] = useState({
@@ -29,7 +29,7 @@ function CreateTablePage({ onNavigate, onCreate }) {
   return (
     <div className="create-table-page">
       <div className="create-container">
-        <button className="btn-back" onClick={() => onNavigate('home')}>
+        <button className="btn-back" onClick={() => onNavigate('inicio')}>
           ← Volver
         </button>
 
@@ -193,7 +193,7 @@ function CreateTablePage({ onNavigate, onCreate }) {
             <button 
               type="button" 
               className="btn-cancel"
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate('inicio')}
             >
               Cancelar
             </button>

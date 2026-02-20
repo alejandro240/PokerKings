@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { gameSocket } from '../services/gameSocket';
+import { gameSocket } from '../../servicios/socketJuego';
 
 /**
  * Custom hook for managing poker game state

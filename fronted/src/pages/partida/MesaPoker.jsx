@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import './PokerTable.css';
+import './MesaPoker.css';
 
 // Tamaño base del diseño (en px). Todo el layout está pensado para este ancho.
 const BASE_WIDTH = 1100;

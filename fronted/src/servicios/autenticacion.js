@@ -1,6 +1,6 @@
-// Auth Service - Manejo de autenticación y sesión
+// Servicio de Autenticación - Manejo de autenticación y sesión
 import { authAPI } from './api';
-import { socketService } from './socket';
+import { socketService } from './socketBase';
 
 export const authService = {
   // Registrarse (Frontend-only con mock)

@@ -1,5 +1,5 @@
 import React from 'react';
-import './HomePage.css';
+import './Inicio.css';
 
 function HomePage({ onNavigate }) {
   return (
@@ -20,7 +20,7 @@ function HomePage({ onNavigate }) {
           <div className="home-buttons">
             <button 
               className="btn btn-home btn-play"
-              onClick={() => onNavigate('lobby')}
+              onClick={() => onNavigate('mesas')}
             >
               <span className="btn-icon">🎮</span>
               <span className="btn-text">Jugar</span>
@@ -28,7 +28,7 @@ function HomePage({ onNavigate }) {
             
             <button 
               className="btn btn-home btn-create"
-              onClick={() => onNavigate('create')}
+              onClick={() => onNavigate('crear')}
             >
               <span className="btn-icon">🔒</span>
               <span className="btn-text">Crear Mesa Privada</span>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { authService } from '../../services/auth';
-import AvatarSelector from './AvatarSelector';
-import './Register.css';
+import { authService } from '../../servicios/autenticacion';
+import AvatarSelector from './SelectorAvatar';
+import './Registro.css';
 
 function Register({ onRegisterSuccess, onSwitchToLogin }) {
   const [formData, setFormData] = useState({

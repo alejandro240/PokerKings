@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
-import Navbar from './components/layout/Navbar'
-import Login from './components/auth/Login'
-import Register from './components/auth/Register'
-import HomePage from './hooks/pages/HomePage'
-import LobbyPage from './hooks/pages/LobbyPage'
-import CreateTablePage from './hooks/pages/CreateTablePage'
-import TablePage from './hooks/pages/TablePage'
-import './App.css'
-import './styles/animations.css'
-import { authService } from './services/auth'
-import { tableAPI } from './services/api'
+import Navbar from './componentes/diseño/BarraNavegacion'
+import Login from './pages/login-register/InicioSesion'
+import Register from './pages/login-register/Registro'
+import HomePage from './pages/inicio/Inicio'
+import LobbyPage from './pages/mesas/Mesas'
+import CreateTablePage from './pages/creacion-de-mesas/CrearMesa'
+import TablePage from './pages/partida/Partida'
+import './Aplicacion.css'
+import './estilos/animaciones.css'
+import { authService } from './servicios/autenticacion'
+import { tableAPI } from './servicios/api'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -18,7 +18,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showRegister, setShowRegister] = useState(false)
-  const [currentView, setCurrentView] = useState('home') // home, lobby, create, table
+  const [currentView, setCurrentView] = useState('inicio') // inicio, mesas, crear, partida
   const [currentTable, setCurrentTable] = useState(null) // Datos de la mesa actual
 
   // Cargar datos al iniciar
@@ -31,7 +31,7 @@ function App() {
         const currentUser = authService.getCurrentUser()
         if (currentUser) {
           setUser(currentUser)
-          // Las mesas se cargarán bajo demanda cuando el usuario vaya al lobby
+          // Las mesas se cargarán bajo demanda cuando el usuario vaya a la sección de mesas
           setTables([])
         } else {
           setTables([])
@@ -46,10 +46,10 @@ function App() {
     loadData()
   }, [])
 
-  // Función cuando el login es exitoso
+  // Función cuando el inicio de sesión es exitoso
   const handleLoginSuccess = async (loggedUser) => {
     setUser(loggedUser)
-    // Las mesas se mostrarán desde LobbyPage (datos de ejemplo)
+    // Las mesas se mostrarán desde la página de Mesas (datos de ejemplo)
     setTables([])
   }
 
@@ -64,7 +64,7 @@ function App() {
     authService.logout()
     setUser(null)
     setTables([])
-    setCurrentView('home')
+    setCurrentView('inicio')
   }
 
   // Función para actualizar usuario
@@ -86,7 +86,7 @@ function App() {
       console.log('Unirse a mesa:', table)
       // Establecer la mesa actual
       setCurrentTable(table)
-      setCurrentView('table')
+      setCurrentView('partida')
       // Aquí después harás la llamada al backend para unirse realmente
       // const response = await tableAPI.joinTable(table.id)
     } catch (err) {
@@ -120,7 +120,7 @@ function App() {
           botsCount: formData.bots
         })
         
-        setCurrentView('table')
+        setCurrentView('partida')
         
         // Recargar lista de mesas
         try {
@@ -139,7 +139,7 @@ function App() {
           status: 'waiting'
         }
         setCurrentTable(localTable)
-        setCurrentView('table')
+        setCurrentView('partida')
         setTables(prev => [...prev, localTable])
       }
     } catch (err) {
@@ -148,7 +148,7 @@ function App() {
     }
   }
 
-  // Si no hay usuario, mostrar Login o Register
+  // Si no hay usuario, mostrar inicio de sesión o registro
   if (!user) {
     return (
       <div className="App">
@@ -202,25 +202,25 @@ function App() {
       <Navbar user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
       
       {/* Renderizar vista actual */}
-      {currentView === 'home' && (
+      {currentView === 'inicio' && (
         <HomePage onNavigate={handleNavigate} />
       )}
 
-      {currentView === 'lobby' && (
+      {currentView === 'mesas' && (
         <LobbyPage 
           onNavigate={handleNavigate}
           onJoinTable={handleJoinTable}
         />
       )}
 
-      {currentView === 'create' && (
+      {currentView === 'crear' && (
         <CreateTablePage 
           onNavigate={handleNavigate}
           onCreate={handleCreateTable}
         />
       )}
 
-      {currentView === 'table' && currentTable && (
+      {currentView === 'partida' && currentTable && (
         <TablePage 
           table={currentTable}
           user={user}

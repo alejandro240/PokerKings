@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { authService } from '../../services/auth';
-import './Login.css';
+import { authService } from '../../servicios/autenticacion';
+import './InicioSesion.css';
 
 function Login({ onLoginSuccess, onSwitchToRegister }) {
   const [email, setEmail] = useState('');

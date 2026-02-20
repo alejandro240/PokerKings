@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './AvatarSelector.css';
+import './SelectorAvatar.css';
 
 const AVATAR_OPTIONS = [
   '😀', '😎', '🤩', '😇', '🥳',

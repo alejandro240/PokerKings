@@ -7,7 +7,7 @@ import InvitacionesOffcanvas from './PanelInvitaciones';
 import AccountModal from './ModalCuenta';
 import './BarraNavegacion.css';
 
-function Navbar({ user, onLogout, onUpdateUser }) {
+function Navbar({ user, onLogout, onUpdateUser, onNavigate }) {
   // Estado para controlar qué offcanvas está abierto (solo uno a la vez)
   const [activeOffcanvas, setActiveOffcanvas] = useState(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -36,7 +36,7 @@ function Navbar({ user, onLogout, onUpdateUser }) {
 
   // Función para ir a inicio
   const handleInicio = () => {
-    window.location.href = '/';
+    if (onNavigate) onNavigate('inicio');
   };
 
   // Función para cerrar sesión
@@ -94,9 +94,9 @@ function Navbar({ user, onLogout, onUpdateUser }) {
     <>
       <nav className="navbar navbar-expand-lg navbar-dark navbar-casino">
         <div className="container-fluid">
-          <a className="navbar-brand" href="/">
+          <span className="navbar-brand" style={{ cursor: 'pointer' }} onClick={handleInicio}>
             <img src="/assets/images/logo.png" alt="Poker Kings" height="75" />
-          </a>
+          </span>
 
           {/* Botón hamburguesa para móvil - FIX: Sin Bootstrap JS */}
           <button 
@@ -119,7 +119,17 @@ function Navbar({ user, onLogout, onUpdateUser }) {
                 </button>
               </li>
 
-              {/* 2. Trofeos */}
+              {/* 2. Tienda */}
+              <li className="nav-item">
+                <button
+                  className="nav-link btn btn-link nav-tienda"
+                  onClick={() => onNavigate && onNavigate('tienda')}
+                >
+                  🛒 Tienda
+                </button>
+              </li>
+
+              {/* 3. Trofeos */}
               <li className="nav-item">
                 <button 
                   className="nav-link btn btn-link" 
@@ -129,7 +139,7 @@ function Navbar({ user, onLogout, onUpdateUser }) {
                 </button>
               </li>
 
-              {/* 3. Misiones Diarias */}
+              {/* 4. Misiones Diarias */}
               <li className="nav-item">
                 <button 
                   className="nav-link btn btn-link" 

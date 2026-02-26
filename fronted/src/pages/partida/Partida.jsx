@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import PokerTable from './MesaPoker';
 import BettingActions from './AccionesApuesta';
@@ -17,7 +17,6 @@ function TablePage({ table, user, onNavigate }) {
   const [error, setError] = useState(null);
   const [lastShownHandOver, setLastShownHandOver] = useState(null);
   const [isCompact, setIsCompact] = useState(window.innerWidth < 900);
-  const gameInitialized = useRef(false);
 
   // Detectar tamaño de pantalla para colapsar botones
   useEffect(() => {
@@ -27,16 +26,7 @@ function TablePage({ table, user, onNavigate }) {
   }, []);
 
   // Usar el hook de juego de póker (conectado con backend)
-  const pokerGame = usePokerGame();
-
-  if (!user) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center', color: '#e0e0e0' }}>
-        <h2>Cargando usuario...</h2>
-        <p>Espera un momento</p>
-      </div>
-    );
-  }
+  const pokerGame = usePokerGame(user);
 
   // Sincronizar jugadores desde el backend
   useEffect(() => {
@@ -145,8 +135,13 @@ function TablePage({ table, user, onNavigate }) {
         <p style={{ marginBottom: '1rem' }}>¿Abandonar la partida?</p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
           <button
-            onClick={() => {
+            onClick={async () => {
               toast.dismiss(t.id);
+              try {
+                if (pokerGame.gameId) await gameAPI.leaveGame(pokerGame.gameId);
+              } catch (err) {
+                console.warn('Error al notificar salida al backend:', err);
+              }
               toast.success('Has abandonado la mesa', { id: 'leave-success' });
               onNavigate('inicio');
             }}
@@ -220,6 +215,15 @@ function TablePage({ table, user, onNavigate }) {
         <button className="btn btn-primary" onClick={() => onNavigate('inicio')}>
           Volver al inicio
         </button>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#e0e0e0' }}>
+        <h2>Cargando usuario...</h2>
+        <p>Espera un momento</p>
       </div>
     );
   }

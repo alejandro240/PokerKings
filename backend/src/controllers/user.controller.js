@@ -16,10 +16,11 @@ export const getUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   try {
-    const { avatar } = req.body;
+    const { avatar, chips } = req.body;
     const user = await User.findByPk(req.params.id);
     
-    if (avatar) user.avatar = avatar;
+    if (avatar !== undefined) user.avatar = avatar;
+    if (chips !== undefined) user.chips = Number(chips);
     await user.save();
     
     res.json(user);

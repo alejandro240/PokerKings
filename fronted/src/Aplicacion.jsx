@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Toaster } from 'react-hot-toast'
+import toast, { Toaster } from 'react-hot-toast'
 import Navbar from './componentes/diseño/BarraNavegacion'
 import Login from './pages/login-register/InicioSesion'
 import Register from './pages/login-register/Registro'
@@ -7,19 +7,22 @@ import HomePage from './pages/inicio/Inicio'
 import LobbyPage from './pages/mesas/Mesas'
 import CreateTablePage from './pages/creacion-de-mesas/CrearMesa'
 import TablePage from './pages/partida/Partida'
+import Tienda from './pages/tienda/Tienda'
 import './Aplicacion.css'
 import './estilos/animaciones.css'
 import { authService } from './servicios/autenticacion'
-import { tableAPI } from './servicios/api'
+import { tableAPI, userAPI } from './servicios/api'
 
 function App() {
   const [user, setUser] = useState(null)
-  const [tables, setTables] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [showRegister, setShowRegister] = useState(false)
-  const [currentView, setCurrentView] = useState('inicio') // inicio, mesas, crear, partida
-  const [currentTable, setCurrentTable] = useState(null) // Datos de la mesa actual
+  const [currentView, setCurrentView] = useState(
+    () => sessionStorage.getItem('nav_view') || 'inicio'
+  )
+  const [currentTable, setCurrentTable] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('nav_table')) } catch { return null }
+  })
 
   // Cargar datos al iniciar
   useEffect(() => {
@@ -30,11 +33,18 @@ function App() {
         // Verificar si hay usuario autenticado
         const currentUser = authService.getCurrentUser()
         if (currentUser) {
-          setUser(currentUser)
-          // Las mesas se cargarán bajo demanda cuando el usuario vaya a la sección de mesas
-          setTables([])
+          // Cargar datos frescos desde la BD para tener fichas correctas
+          try {
+            const response = await userAPI.getUserById(currentUser.id)
+            const freshUser = { ...currentUser, ...response.data }
+            setUser(freshUser)
+            sessionStorage.setItem('user', JSON.stringify(freshUser))
+          } catch {
+            // Si falla la BD, usar sessionStorage pero sanear las fichas
+            setUser({ ...currentUser, chips: Number(currentUser.chips) || 0 })
+          }
         } else {
-          setTables([])
+          // sin tablas
         }
       } catch (err) {
         console.error('Error cargando datos:', err)
@@ -47,10 +57,8 @@ function App() {
   }, [])
 
   // Función cuando el inicio de sesión es exitoso
-  const handleLoginSuccess = async (loggedUser) => {
+  const handleLoginSuccess = (loggedUser) => {
     setUser(loggedUser)
-    // Las mesas se mostrarán desde la página de Mesas (datos de ejemplo)
-    setTables([])
   }
 
   // Función cuando el registro es exitoso
@@ -62,21 +70,48 @@ function App() {
   // Función para cerrar sesión
   const handleLogout = () => {
     authService.logout()
+    sessionStorage.removeItem('nav_view')
+    sessionStorage.removeItem('nav_table')
     setUser(null)
-    setTables([])
     setCurrentView('inicio')
+    setCurrentTable(null)
   }
 
+  // Logout automático cuando el token expira (401)
+  useEffect(() => {
+    const onUnauthorized = () => {
+      authService.logout()
+      sessionStorage.removeItem('nav_view')
+      sessionStorage.removeItem('nav_table')
+      setUser(null)
+      setCurrentView('inicio')
+      setCurrentTable(null)
+    }
+    window.addEventListener('auth:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', onUnauthorized)
+  }, []) // setters de useState son estables, no necesitan deps
+
   // Función para actualizar usuario
-  const handleUpdateUser = (updatedUser) => {
-    console.log('handleUpdateUser called with:', updatedUser)
+  const handleUpdateUser = async (updatedUser) => {
     setUser(updatedUser)
     sessionStorage.setItem('user', JSON.stringify(updatedUser))
-    console.log('User saved to sessionStorage:', updatedUser)
+    try {
+      await userAPI.updateProfile(updatedUser.id, {
+        avatar: updatedUser.avatar,
+        chips: updatedUser.chips,
+      })
+    } catch (err) {
+      console.warn('No se pudo guardar perfil en backend:', err)
+    }
   }
 
   // Navegación entre vistas
   const handleNavigate = (view) => {
+    sessionStorage.setItem('nav_view', view)
+    if (view !== 'partida') {
+      sessionStorage.removeItem('nav_table')
+      setCurrentTable(null)
+    }
     setCurrentView(view)
   }
 
@@ -85,13 +120,15 @@ function App() {
     try {
       console.log('Unirse a mesa:', table)
       // Establecer la mesa actual
+      sessionStorage.setItem('nav_table', JSON.stringify(table))
+      sessionStorage.setItem('nav_view', 'partida')
       setCurrentTable(table)
       setCurrentView('partida')
       // Aquí después harás la llamada al backend para unirse realmente
       // const response = await tableAPI.joinTable(table.id)
     } catch (err) {
       console.error('Error uniéndose a mesa:', err)
-      setError('No se pudo unir a la mesa')
+      toast.error('No se pudo unir a la mesa')
     }
   }
 
@@ -114,21 +151,17 @@ function App() {
         const response = await tableAPI.createTable(tableData)
         
         // Establecer la mesa creada como mesa actual
-        setCurrentTable({
+        const createdTable = {
           ...response.data,
           players: [user], // El creador es el primer jugador
           botsCount: formData.bots
-        })
+        }
+        sessionStorage.setItem('nav_table', JSON.stringify(createdTable))
+        sessionStorage.setItem('nav_view', 'partida')
+        setCurrentTable(createdTable)
         
         setCurrentView('partida')
         
-        // Recargar lista de mesas
-        try {
-          const tablesResponse = await tableAPI.getAllTables()
-          setTables(tablesResponse.data || [])
-        } catch (err) {
-          console.warn('No se pudo recargar mesas')
-        }
       } catch (apiError) {
         // Si backend no está disponible, crear mesa localmente
         console.warn('Backend no disponible, creando mesa localmente')
@@ -138,14 +171,23 @@ function App() {
           players: [user],
           status: 'waiting'
         }
+        sessionStorage.setItem('nav_table', JSON.stringify(localTable))
+        sessionStorage.setItem('nav_view', 'partida')
         setCurrentTable(localTable)
         setCurrentView('partida')
-        setTables(prev => [...prev, localTable])
       }
     } catch (err) {
       console.error('Error creando mesa:', err)
-      setError('No se pudo crear la mesa')
+      toast.error('No se pudo crear la mesa')
     }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0e27', color: '#daa520', fontSize: '1.2rem' }}>
+        <span>Cargando...</span>
+      </div>
+    )
   }
 
   // Si no hay usuario, mostrar inicio de sesión o registro
@@ -199,7 +241,7 @@ function App() {
         }}
       />
       
-      <Navbar user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
+      <Navbar user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} onNavigate={handleNavigate} />
       
       {/* Renderizar vista actual */}
       {currentView === 'inicio' && (
@@ -225,6 +267,14 @@ function App() {
           table={currentTable}
           user={user}
           onNavigate={handleNavigate}
+        />
+      )}
+
+      {currentView === 'tienda' && (
+        <Tienda
+          user={user}
+          onNavigate={handleNavigate}
+          onUpdateUser={handleUpdateUser}
         />
       )}
     </div>

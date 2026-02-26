@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { gameSocket } from '../../servicios/socketJuego';
+import { gameAPI } from '../../servicios/api';
 
 /**
  * Custom hook for managing poker game state
  * Integrado con backend a través de WebSocket
  */
-const usePokerGame = () => {
+const usePokerGame = (user) => {
   // Game state
   const [gameId, setGameId] = useState(null);
   const [gamePhase, setGamePhase] = useState('waiting'); // pre-flop, flop, turn, river, showdown
@@ -31,6 +32,14 @@ const usePokerGame = () => {
 
   // All players state (for display)
   const [players, setPlayers] = useState([]);
+
+  // Actualizar avatar del jugador actual inmediatamente cuando cambia en el perfil
+  useEffect(() => {
+    if (!user?.id || !user?.avatar) return;
+    setPlayers(prev => prev.map(p =>
+      p.userId === user.id ? { ...p, avatar: user.avatar } : p
+    ));
+  }, [user?.avatar]);
   
   // Winners from backend
   const [winners, setWinners] = useState([]); // Para múltiples ganadores
@@ -64,10 +73,15 @@ const usePokerGame = () => {
         // Actualizar estado del jugador actual
         if (gameState.players && gameState.players.length > 0) {
           console.log('👥 Actualizando jugadores:', gameState.players.length, gameState.players);
-          setPlayers(gameState.players);
-          
-          // Encontrar al jugador actual
+
+          // Usar avatar local (sessionStorage) para el jugador actual ya que el backend puede tener uno desactualizado
           const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+          const playersConAvatar = gameState.players.map(p =>
+            p.userId === currentUser.id && currentUser.avatar
+              ? { ...p, avatar: currentUser.avatar }
+              : p
+          );
+          setPlayers(playersConAvatar);
           currentIdx = gameState.players.findIndex(p => p.userId === currentUser.id);
           
           // FIX: Manejar caso cuando currentIdx === -1 (espectador)
@@ -160,35 +174,18 @@ const usePokerGame = () => {
   // Actions que envían al backend vía REST API
   const sendAction = useCallback(async (action, amount = 0) => {
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-    const token = sessionStorage.getItem('token');
     
     try {
-      const response = await fetch(`http://localhost:3000/api/games/${gameId}/action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          action,
-          amount
-        })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) {
-        console.error('❌ Error en acción:', data.error);
-      } else {
-        console.log('✅ Acción procesada:', action);
-        if (data.handOver) {
-          setLastHandResult({
-            winnerId: data.winnerId || data.winner?.userId || data.winner?.id,
-            winnerName: data.winnerName || data.winner?.username || 'Desconocido',
-            potWon: data.potWon || 0
-          });
-          setPlayerHasActed(false);
-        }
+      const response = await gameAPI.playerAction(gameId, action, amount);
+      const data = response.data;
+      console.log('✅ Acción procesada:', action);
+      if (data.handOver) {
+        setLastHandResult({
+          winnerId: data.winnerId || data.winner?.userId || data.winner?.id,
+          winnerName: data.winnerName || data.winner?.username || 'Desconocido',
+          potWon: data.potWon || 0
+        });
+        setPlayerHasActed(false);
       }
       return data;
     } catch (error) {
@@ -324,9 +321,8 @@ const usePokerGame = () => {
     playerHasActed,
     players,
     playerIndex,
-    currentPlayerTurn,
     
-    // Winners (múltiples ganadores)
+    // Winners
     winners,
     winnerIds,
     lastHandResult,

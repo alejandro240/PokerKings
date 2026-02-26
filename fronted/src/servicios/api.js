@@ -28,10 +28,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado o inválido
+      // Token expirado o inválido — limpiar sesión y notificar a la app
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
-      window.location.href = '/login';
+      sessionStorage.removeItem('nav_view');
+      sessionStorage.removeItem('nav_table');
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }
     return Promise.reject(error);
   }
@@ -57,8 +59,8 @@ export const userAPI = {
   getUserById: (userId) =>
     apiClient.get(`/users/${userId}`),
   
-  updateProfile: (userData) =>
-    apiClient.put('/users/profile', userData),
+  updateProfile: (userId, userData) =>
+    apiClient.put(`/users/${userId}`, userData),
 };
 
 // ============= MESAS =============

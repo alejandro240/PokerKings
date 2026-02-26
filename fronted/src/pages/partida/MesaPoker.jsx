@@ -271,6 +271,15 @@ function PokerTable({
             </div>
           )}
         </div>
+
+        {/* Indicador de fase */}
+        <div className="phase-indicator">
+          <div className={`phase-dot ${(gamePhase === 'pre-flop' || gamePhase === 'preflop') ? 'active' : ''}`}></div>
+          <div className={`phase-dot ${gamePhase === 'flop' ? 'active' : ''}`}></div>
+          <div className={`phase-dot ${gamePhase === 'turn' ? 'active' : ''}`}></div>
+          <div className={`phase-dot ${gamePhase === 'river' ? 'active' : ''}`}></div>
+          <div className={`phase-dot ${gamePhase === 'showdown' ? 'active' : ''}`}></div>
+        </div>
       </div>
 
       {/* Asientos de jugadores */}

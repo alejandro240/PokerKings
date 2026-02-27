@@ -129,7 +129,8 @@ function PokerTable({
       if (i < players.length) {
         // Calcular el índice original del jugador que debería estar en esta posición
         const originalIndex = (currentUserIndex + i - offset + players.length) % players.length;
-        displayedPlayers[i] = players[originalIndex];
+        const originalPlayer = players[originalIndex];
+        displayedPlayers[i] = originalPlayer?.isSittingOut ? null : originalPlayer;
         playerIndexMap[i] = originalIndex;
       } else {
         displayedPlayers[i] = null;
@@ -138,7 +139,7 @@ function PokerTable({
     }
   } else {
     // Si no hay usuario actual, mostrar jugadores en orden
-    displayedPlayers = [...players];
+    displayedPlayers = players.map(p => (p?.isSittingOut ? null : p));
     for (let i = 0; i < maxPlayers; i++) {
       playerIndexMap[i] = i < players.length ? i : null;
     }

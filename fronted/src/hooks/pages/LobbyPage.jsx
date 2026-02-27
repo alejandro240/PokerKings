@@ -36,10 +36,7 @@ function LobbyPage({ onNavigate, onJoinTable }) {
       socket.on('lobby:update', onLobbyTables);
     }
     
-    // Recargar cada 5 segundos para actualizar estado de mesas
-    const interval = setInterval(loadTables, 5000);
     return () => {
-      clearInterval(interval);
       if (socket) {
         socket.emit('lobby:leave');
         socket.off('lobby:tables', onLobbyTables);

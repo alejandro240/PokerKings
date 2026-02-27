@@ -1,5 +1,6 @@
 import { Game, Table, Hand, HandAction } from '../models/index.js';
 import pokerEngine from '../services/pokerEngine.js';
+import { emitLobbyTables } from './lobby.socket.js';
 
 export const setupTableSocket = (io, socket) => {
   const syncLeaveTable = async (tableId) => {
@@ -26,6 +27,7 @@ export const setupTableSocket = (io, socket) => {
       }
 
       await table.save();
+      await emitLobbyTables(io);
       console.log(`👋 Socket ${socket.id} salió de mesa ${tableId}. currentPlayers=${table.currentPlayers}`);
     } catch (error) {
       console.error(`❌ Error actualizando mesa al salir socket ${socket.id}:`, error.message);

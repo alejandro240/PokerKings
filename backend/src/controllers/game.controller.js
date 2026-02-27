@@ -8,6 +8,7 @@ import {
   getGameState,
   createDeck
 } from '../services/game.service.js';
+import { emitLobbyTables } from '../sockets/lobby.socket.js';
 
 /**
  * Crear y iniciar un nuevo juego en una mesa
@@ -68,6 +69,12 @@ export const startGame = async (req, res) => {
             currentPlayers: Math.min(table.maxPlayers, updatedActiveSeats),
             status: updatedActiveSeats >= 2 ? 'playing' : 'waiting'
           });
+
+          try {
+            await emitLobbyTables(getIO());
+          } catch (emitErr) {
+            console.warn('⚠️ No se pudo emitir lobby update:', emitErr.message);
+          }
         }
 
         console.log('✅ Usuario ya está en el juego, devolviendo estado actual');
@@ -109,6 +116,12 @@ export const startGame = async (req, res) => {
           currentPlayers: Math.min(table.maxPlayers, updatedActiveSeats),
           status: updatedActiveSeats >= 2 ? 'playing' : 'waiting'
         });
+
+        try {
+          await emitLobbyTables(getIO());
+        } catch (emitErr) {
+          console.warn('⚠️ No se pudo emitir lobby update:', emitErr.message);
+        }
 
         const updatedState = await getGameState(activeGame.id);
         try {
@@ -170,6 +183,12 @@ export const startGame = async (req, res) => {
         status: seatedPlayers.length >= 2 ? 'playing' : 'waiting',
         currentPlayers: Math.min(table.maxPlayers, seatedPlayers.length)
       });
+
+      try {
+        await emitLobbyTables(getIO());
+      } catch (emitErr) {
+        console.warn('⚠️ No se pudo emitir lobby update:', emitErr.message);
+      }
 
       if (seatedPlayers.length >= 2) {
         const players = await User.findAll({
@@ -249,6 +268,12 @@ export const startGame = async (req, res) => {
         currentPlayers: Math.min(table.maxPlayers, players.length)
       });
 
+      try {
+        await emitLobbyTables(getIO());
+      } catch (emitErr) {
+        console.warn('⚠️ No se pudo emitir lobby update:', emitErr.message);
+      }
+
       const waitingState = await getGameState(waitingGameCreated.id, false);
       const io = getIO();
       io.to(`table_${tableId}`).emit('gameStateUpdated', waitingState);
@@ -273,6 +298,12 @@ export const startGame = async (req, res) => {
       status: 'playing',
       currentPlayers: playerIds.length
     });
+
+    try {
+      await emitLobbyTables(getIO());
+    } catch (emitErr) {
+      console.warn('⚠️ No se pudo emitir lobby update:', emitErr.message);
+    }
 
     const gameState = await getGameState(game.id);
 

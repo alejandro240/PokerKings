@@ -303,6 +303,15 @@ const startNextHand = async (game) => {
   game.changed('players', true);
 
   await game.save();
+
+  await Promise.all(
+    players
+      .filter(p => p?.userId)
+      .map(p => User.update(
+        { chips: Math.max(0, parseInt(p.chips) || 0) },
+        { where: { id: p.userId } }
+      ))
+  );
 };
 
 /**
@@ -1265,6 +1274,7 @@ export const getGameState = async (gameId, autoShowdown = true) => {
         chips: p.chips,
         committed: parseInt(p.committed) || 0,
         folded: p.folded,
+        isSittingOut: !!p.isSittingOut,
         lastAction: p.lastAction || null,
         betInPhase: p.betInPhase || 0,
         isCurrentPlayer: idx === game.currentPlayerIndex,

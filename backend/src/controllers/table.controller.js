@@ -1,4 +1,6 @@
 import { Table, User, Game } from '../models/index.js';
+import { getIO } from '../config/socket.js';
+import { emitLobbyTables } from '../sockets/lobby.socket.js';
 
 export const getTables = async (req, res) => {
   try {
@@ -35,6 +37,13 @@ export const createTable = async (req, res) => {
       tableColor: tableColor || '#1a4d2e',
       botsCount: botsCount || 0
     });
+
+    try {
+      await emitLobbyTables(getIO());
+    } catch (socketErr) {
+      console.warn('⚠️ No se pudo emitir lobby update tras createTable:', socketErr.message);
+    }
+
     res.status(201).json(table);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -61,6 +70,12 @@ export const joinTable = async (req, res) => {
     table.currentPlayers += 1;
     await table.save();
 
+    try {
+      await emitLobbyTables(getIO());
+    } catch (socketErr) {
+      console.warn('⚠️ No se pudo emitir lobby update tras joinTable:', socketErr.message);
+    }
+
     res.json({ message: 'Joined table successfully', table });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -72,6 +87,13 @@ export const leaveTable = async (req, res) => {
     const table = await Table.findByPk(req.params.id);
     table.currentPlayers = Math.max(0, table.currentPlayers - 1);
     await table.save();
+
+    try {
+      await emitLobbyTables(getIO());
+    } catch (socketErr) {
+      console.warn('⚠️ No se pudo emitir lobby update tras leaveTable:', socketErr.message);
+    }
+
     res.json({ message: 'Left table successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -92,8 +92,10 @@ export const gameAPI = {
     apiClient.get(`/games/${gameId}`),
   
   // Enviar acción del jugador
-  playerAction: (gameId, action, amount = 0) =>
-    apiClient.post(`/games/${gameId}/action`, { action, amount }),
+  playerAction: (gameId, action, amount = 0) => {
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    return apiClient.post(`/games/${gameId}/action`, { userId: user.id, action, amount });
+  },
   
   // Obtener historial de juegos
   getPlayerGames: (userId) =>

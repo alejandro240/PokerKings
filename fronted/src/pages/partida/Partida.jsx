@@ -16,6 +16,7 @@ function TablePage({ table, user, onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastShownHandOver, setLastShownHandOver] = useState(null);
+  const [winnerPopupData, setWinnerPopupData] = useState(null);
   const [isCompact, setIsCompact] = useState(window.innerWidth < 900);
 
   // Detectar tamaño de pantalla para colapsar botones
@@ -39,11 +40,15 @@ function TablePage({ table, user, onNavigate }) {
     if (pokerGame.lastHandResult) {
       const key = `${pokerGame.lastHandResult.winnerId}-${pokerGame.lastHandResult.potWon}`;
       if (key !== lastShownHandOver) {
-        toast.success(`🏆 Ganador: ${pokerGame.lastHandResult.winnerName} (+${(pokerGame.lastHandResult.potWon || 0).toLocaleString()} PK)`);
+        const { winnerName, potWon, winnerId } = pokerGame.lastHandResult;
+        const esTuVictoria = user && String(winnerId) === String(user.id);
+        setWinnerPopupData({ winnerName, potWon, esTuVictoria });
+        const timer = setTimeout(() => setWinnerPopupData(null), 3500);
         setLastShownHandOver(key);
+        return () => clearTimeout(timer);
       }
     }
-  }, [pokerGame.lastHandResult, lastShownHandOver]);
+  }, [pokerGame.lastHandResult, lastShownHandOver, user]);
 
   // Inicializar el juego desde el backend
   useEffect(() => {
@@ -251,6 +256,18 @@ function TablePage({ table, user, onNavigate }) {
 
   return (
     <div className="table-page">
+      {/* Popup ganador centrado en pantalla */}
+      {winnerPopupData && (
+        <div className={`winner-popup ${winnerPopupData.esTuVictoria ? 'winner-popup--tuya' : ''}`}>
+          <div className="winner-popup__icono">{winnerPopupData.esTuVictoria ? '🥇' : '🏆'}</div>
+          <div className="winner-popup__titulo">
+            {winnerPopupData.esTuVictoria ? '¡HAS GANADO!' : 'Ganador de la mano'}
+          </div>
+          <div className="winner-popup__nombre">{winnerPopupData.winnerName}</div>
+          <div className="winner-popup__bote">+{(winnerPopupData.potWon || 0).toLocaleString()} PK</div>
+        </div>
+      )}
+
       {/* Header con información de la mesa */}
       <div className="table-header">
         {/* Salir: visible solo en pantallas grandes */}

@@ -124,8 +124,8 @@ function Tienda({ user, onNavigate, onUpdateUser }) {
             </div>
 
             <div className="paquete-precio">
-              ${paquete.precio.toFixed(2)}
-              <span className="moneda"> USD ficticio</span>
+              {paquete.precio.toFixed(2)}€
+              <span className="moneda"> Euros ficticio</span>
             </div>
 
             <button

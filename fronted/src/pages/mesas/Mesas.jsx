@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { tableAPI } from '../../services/api';
-import { socketService } from '../../services/socket';
-import './LobbyPage.css';
+import { tableAPI } from '../../servicios/api';
+import { socketService } from '../../servicios/socketBase';
+import './Mesas.css';
 
 function LobbyPage({ onNavigate, onJoinTable }) {
   const [tables, setTables] = useState([]);

@@ -198,7 +198,6 @@ function TablePage({ table, user, onNavigate }) {
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
           <button
             onClick={async () => {
-            onClick={async () => {
               toast.dismiss(t.id);
               await performLeave();
             }}

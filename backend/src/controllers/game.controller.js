@@ -575,7 +575,7 @@ export const leaveGame = async (req, res) => {
       return res.status(404).json({ error: 'Juego no encontrado' });
     }
 
-    if (game.status !== 'active') {
+    if (!['active', 'waiting'].includes(game.status)) {
       return res.status(400).json({ 
         error: 'El juego ya ha terminado' 
       });
@@ -649,6 +649,10 @@ export const leaveGame = async (req, res) => {
       try {
         const io = getIO();
         io.to(`table_${table.id}`).emit('gameStateUpdated', await getGameState(gameId, false));
+
+        const tables = await Table.findAll({ where: { status: ['waiting', 'playing'] } });
+        io.to('lobby').emit('lobby:update', tables);
+        io.to('lobby').emit('lobby:tables', tables);
       } catch (emitError) {
         console.warn('⚠️ No se pudo emitir gameStateUpdated tras leaveGame:', emitError.message);
       }

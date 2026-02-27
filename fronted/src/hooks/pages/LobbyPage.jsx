@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { tableAPI } from '../../services/api';
+import { socketService } from '../../services/socket';
 import './LobbyPage.css';
 
 function LobbyPage({ onNavigate, onJoinTable }) {
@@ -20,10 +21,31 @@ function LobbyPage({ onNavigate, onJoinTable }) {
     };
     
     loadTables();
+
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const socket = socketService.getSocket() || socketService.connect(token);
+
+    const onLobbyTables = (incomingTables) => {
+      setTables(incomingTables || []);
+      setLoading(false);
+    };
+
+    if (socket) {
+      socket.emit('lobby:join');
+      socket.on('lobby:tables', onLobbyTables);
+      socket.on('lobby:update', onLobbyTables);
+    }
     
     // Recargar cada 5 segundos para actualizar estado de mesas
     const interval = setInterval(loadTables, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (socket) {
+        socket.emit('lobby:leave');
+        socket.off('lobby:tables', onLobbyTables);
+        socket.off('lobby:update', onLobbyTables);
+      }
+    };
   }, []);
 
   return (

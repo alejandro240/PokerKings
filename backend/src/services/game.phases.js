@@ -128,8 +128,8 @@ export const checkAllPlayersActed = (players, dealerIndex) => {
   
   if (!allActed) return false;
 
-  // Verificar que todos los jugadores con chips tienen la misma cantidad committed
-  const committedAmounts = playersWithChips.map(p => parseInt(p.committed) || 0);
+  // Verificar que todos los jugadores con chips tienen la misma cantidad apostada en esta fase
+  const committedAmounts = playersWithChips.map(p => parseInt(p.betInPhase) || 0);
 
   if (committedAmounts.length === 0) return true;
 

@@ -8,10 +8,23 @@ export const setupTableSocket = (io, socket) => {
       const table = await Table.findByPk(tableId);
       if (!table) return;
 
-      table.currentPlayers = Math.max(0, (table.currentPlayers || 0) - 1);
-      if (table.currentPlayers === 0 && table.status === 'playing') {
+      const game = await Game.findOne({
+        where: {
+          tableId,
+          status: ['active', 'waiting']
+        },
+        order: [['updatedAt', 'DESC']]
+      });
+
+      if (game && Array.isArray(game.players)) {
+        const seated = game.players.filter(p => !p.isSittingOut).length;
+        table.currentPlayers = Math.max(0, seated);
+        table.status = seated >= 2 ? 'playing' : 'waiting';
+      } else {
+        table.currentPlayers = 0;
         table.status = 'waiting';
       }
+
       await table.save();
       console.log(`👋 Socket ${socket.id} salió de mesa ${tableId}. currentPlayers=${table.currentPlayers}`);
     } catch (error) {

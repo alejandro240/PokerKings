@@ -70,7 +70,7 @@ const usePokerGame = () => {
             setPlayerIndex(currentIdx);
             const currentPlayer = gameState.players[currentIdx];
             setPlayerChips(currentPlayer.chips || 0);
-            setPlayerBet(currentPlayer.committed || 0);
+            setPlayerBet(currentPlayer.betInPhase || 0);
             setPlayerHoleCards(currentPlayer.holeCards || []);
             setPlayerHasFolded(currentPlayer.folded || false);
             // Resetear acciones cuando es tu turno o al empezar mano
@@ -258,7 +258,7 @@ const usePokerGame = () => {
 
   // Check if player can perform actions
   const currentPlayerState = players[playerIndex];
-  const committed = parseInt(currentPlayerState?.committed ?? playerBet) || 0;
+  const committed = parseInt(currentPlayerState?.betInPhase ?? playerBet) || 0;
   const currentBetNum = parseInt(currentBet) || 0;
   const isMyTurn = currentPlayerTurn === playerIndex;
   const isPreflop = gamePhase === 'preflop' || gamePhase === 'pre-flop';

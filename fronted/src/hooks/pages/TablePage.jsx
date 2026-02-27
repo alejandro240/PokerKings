@@ -357,9 +357,13 @@ function TablePage({ table, user, onNavigate }) {
       </div>
 
       {/* Mesa de poker con cartas comunitarias */}
+      {(() => {
+        const tablePlayers = pokerGame.players.length > 0 ? pokerGame.players : players;
+        const currentUserIndex = tablePlayers.findIndex(p => p?.userId === user?.id);
+        return (
       <PokerTable 
         maxPlayers={table.maxPlayers}
-        players={pokerGame.players.length > 0 ? pokerGame.players : players}
+        players={tablePlayers}
         currentPlayerId={user?.id || user?.username} // ID del usuario actual
         tableColor={table.tableColor}
         dealerPosition={pokerGame.dealerPosition}
@@ -369,9 +373,11 @@ function TablePage({ table, user, onNavigate }) {
         gamePhase={pokerGame.gamePhase}
         pot={pokerGame.pot}
         sidePots={pokerGame.sidePots}
-        currentUserIndex={players.findIndex(p => p?.userId === user?.id)}
+        currentUserIndex={currentUserIndex}
         currentPlayerIndex={pokerGame.currentPlayerTurn}
       />
+        );
+      })()}
 
       {/* Acciones de apuestas */}
       {!isSpectator && pokerGame.gamePhase !== 'waiting' && (() => {

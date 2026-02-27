@@ -109,6 +109,8 @@ export const initializeGame = async (tableId, playersData) => {
       userId: playerData.userId,
       chips: playerData.chips || 1000,
       committed: 0,
+      betInPhase: 0,
+      lastAction: null,
       hand: null,
       folded: false,
       isSittingOut: false
@@ -153,8 +155,10 @@ export const initializeGame = async (tableId, playersData) => {
     // Registrar los blinds como apuestas y restarlos de chips
     players[positions.smallBlindIndex].chips -= smallBlindAmount;
     players[positions.smallBlindIndex].committed = smallBlindAmount;
+    players[positions.smallBlindIndex].betInPhase = smallBlindAmount;
     players[positions.bigBlindIndex].chips -= bigBlindAmount;
     players[positions.bigBlindIndex].committed = bigBlindAmount;
+    players[positions.bigBlindIndex].betInPhase = bigBlindAmount;
 
     await game.update({ players });
 
@@ -200,8 +204,10 @@ export const activateWaitingGame = async (game, playersData) => {
 
   players[positions.smallBlindIndex].chips -= smallBlindAmount;
   players[positions.smallBlindIndex].committed = smallBlindAmount;
+  players[positions.smallBlindIndex].betInPhase = smallBlindAmount;
   players[positions.bigBlindIndex].chips -= bigBlindAmount;
   players[positions.bigBlindIndex].committed = bigBlindAmount;
+  players[positions.bigBlindIndex].betInPhase = bigBlindAmount;
 
   await game.update({
     phase: 'preflop',
@@ -269,8 +275,10 @@ const startNextHand = async (game) => {
 
   players[sbIndex].chips -= sbAmount;
   players[sbIndex].committed = sbAmount;
+  players[sbIndex].betInPhase = sbAmount;
   players[bbIndex].chips -= bbAmount;
   players[bbIndex].committed = bbAmount;
+  players[bbIndex].betInPhase = bbAmount;
 
   const currentPlayerIndex = players.length === 2
     ? dealerIndex
@@ -352,6 +360,19 @@ const dealCommunityForNextPhase = (game, nextPhase) => {
  */
 const getActivePlayers = (players) => players.filter(p => !p.folded);
 
+const syncPlayersChipsToUsers = async (players) => {
+  if (!Array.isArray(players) || players.length === 0) return;
+
+  const updates = players
+    .filter(p => p?.userId)
+    .map((p) => User.update(
+      { chips: Math.max(0, parseInt(p.chips) || 0) },
+      { where: { id: p.userId } }
+    ));
+
+  await Promise.all(updates);
+};
+
 /**
  * Resolver ganador por fold (solo queda uno activo)
  */
@@ -384,6 +405,8 @@ const finishByFold = async (game) => {
   // Actualizar jugadores con el bote distribuido
   game.players = JSON.parse(JSON.stringify(game.players));
   game.changed('players', true);
+
+  await syncPlayersChipsToUsers(game.players);
 
   // ¿Hay suficientes jugadores con fichas para seguir?
   const playersWithChips = game.players.filter(p => p.chips > 0 && !p.isSittingOut);
@@ -581,6 +604,8 @@ const finishShowdown = async (game) => {
   game.players = distributedPlayers;
   game.changed('players', true);
 
+  await syncPlayersChipsToUsers(game.players);
+
   // ¿Hay suficientes jugadores con fichas para seguir?
   const playersWithChips = game.players.filter(p => p.chips > 0 && !p.isSittingOut);
   if (playersWithChips.length >= 2) {
@@ -679,7 +704,7 @@ export const validateAction = (game, playerId, action, amount = 0) => {
   // Convertir a números para evitar comparaciones de strings
   const currentBet = parseInt(game.currentBet) || 0;
   const playerChips = currentPlayer.chips;
-  const playerCommitted = parseInt(currentPlayer.committed) || 0;
+  const playerBetInPhase = parseInt(currentPlayer.betInPhase) || 0;
 
   switch (action) {
     case 'fold':
@@ -687,27 +712,26 @@ export const validateAction = (game, playerId, action, amount = 0) => {
 
     case 'check':
       // Solo si la apuesta actual es igual a lo que ya ha puesto
-      if (playerCommitted >= currentBet) {
+      if (playerBetInPhase >= currentBet) {
         return true;
       }
       throw new Error('No puedes hacer check, necesitas igualar la apuesta');
 
     case 'call':
-      const callAmount = currentBet - playerCommitted;
-      if (callAmount > playerChips) {
-        throw new Error('No tienes suficientes fichas para igualar');
-      }
+      const callAmount = currentBet - playerBetInPhase;
+      // Si no alcanza para igualar completa, se permite call all-in (short call)
+      // y la gestión de side pots se hace en processPlayerAction.
       return true;
 
     case 'raise':
       // Si el jugador está haciendo all-in (apostando todas sus fichas), es válido
       const isAllIn = amount >= playerChips;
       
-      if (!isAllIn && amount <= currentBet - playerCommitted) {
-        throw new Error(`La subida mínima es ${currentBet - playerCommitted + currentBet}`);
+      if (!isAllIn && amount <= currentBet - playerBetInPhase) {
+        throw new Error(`La subida mínima es ${currentBet - playerBetInPhase + currentBet}`);
       }
-      const raiseTotal = playerCommitted + amount;
-      if (raiseTotal > playerChips + playerCommitted) {
+      const raiseTotal = playerBetInPhase + amount;
+      if (raiseTotal > playerChips + playerBetInPhase) {
         throw new Error('No tienes suficientes fichas para subir esa cantidad');
       }
       return true;
@@ -760,11 +784,23 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
 
     case 'call':
       const playerCommittedNum = parseInt(currentPlayer.committed) || 0;
-      const callAmount = game.currentBet - playerCommittedNum;
-      currentPlayer.chips -= callAmount;
-      currentPlayer.committed = playerCommittedNum + callAmount;
-      game.pot += callAmount;
-      totalBet = callAmount;
+      const playerBetInPhaseNum = parseInt(currentPlayer.betInPhase) || 0;
+      const callAmount = Math.max(0, game.currentBet - playerBetInPhaseNum);
+      const paidAmount = Math.min(callAmount, currentPlayer.chips);
+      currentPlayer.chips -= paidAmount;
+      currentPlayer.committed = playerCommittedNum + paidAmount;
+      currentPlayer.betInPhase = playerBetInPhaseNum + paidAmount;
+      game.pot += paidAmount;
+      totalBet = paidAmount;
+
+      // Si el call dejó al jugador all-in, inicializar/recalcular side pots
+      if (currentPlayer.chips === 0) {
+        if (!game.sidePots) {
+          game.sidePots = calculateSidePots(game.players);
+        } else {
+          game.sidePots = rebuildSidePots(game.players);
+        }
+      }
       break;
 
     case 'raise':
@@ -774,17 +810,19 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
         totalBet = currentPlayer.chips;
         game.pot += currentPlayer.chips;
         currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + currentPlayer.chips;
+        currentPlayer.betInPhase = (parseInt(currentPlayer.betInPhase) || 0) + currentPlayer.chips;
         currentPlayer.chips = 0;
         // Solo actualizar currentBet si la nueva apuesta es mayor
-        if (currentPlayer.committed > game.currentBet) {
-          game.currentBet = currentPlayer.committed;
+        if (currentPlayer.betInPhase > game.currentBet) {
+          game.currentBet = currentPlayer.betInPhase;
         }
       } else {
         // Raise normal
         currentPlayer.chips -= amount;
         currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + amount;
+        currentPlayer.betInPhase = (parseInt(currentPlayer.betInPhase) || 0) + amount;
         game.pot += amount;
-        game.currentBet = currentPlayer.committed;
+        game.currentBet = currentPlayer.betInPhase;
         totalBet = amount;
       }
       break;
@@ -793,9 +831,10 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
       totalBet = currentPlayer.chips;
       game.pot += currentPlayer.chips;
       currentPlayer.committed = (parseInt(currentPlayer.committed) || 0) + currentPlayer.chips;
+      currentPlayer.betInPhase = (parseInt(currentPlayer.betInPhase) || 0) + currentPlayer.chips;
       currentPlayer.chips = 0;
-      if (currentPlayer.committed > game.currentBet) {
-        game.currentBet = currentPlayer.committed;
+      if (currentPlayer.betInPhase > game.currentBet) {
+        game.currentBet = currentPlayer.betInPhase;
       }
       // Initialize side pots when a player goes all-in
       if (!game.sidePots) {
@@ -805,7 +844,6 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
   }
 
   currentPlayer.lastAction = action;
-  currentPlayer.betInPhase = (currentPlayer.betInPhase || 0) + totalBet;
 
   // Normalizar referencia explícitamente (algunas implementaciones de JSON pueden entregar copias)
   players[currentPlayerIndex] = { ...currentPlayer };
@@ -831,6 +869,21 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
     nextIndex = (nextIndex + 1) % players.length;
     if (nextIndex === startIndex) {
       console.log('[DEBUG][NEXT_PLAYER] Full circle! nextIndex === startIndex');
+      const nonFoldedPlayers = players.filter(p => !p.folded);
+      const pendingPlayers = players
+        .map((p, idx) => ({ p, idx }))
+        .filter(({ p }) => (parseInt(p.chips) || 0) > 0 && p.lastAction == null);
+
+      if (nonFoldedPlayers.length === 1) {
+        const soleRemaining = nonFoldedPlayers[0];
+        const pendingOthers = pendingPlayers.filter(({ p }) => p.userId !== soleRemaining.userId);
+        if (pendingOthers.length > 0) {
+          nextIndex = pendingOthers[0].idx;
+          console.log('[DEBUG][NEXT_PLAYER] Preventing premature fold win, pending player found:', nextIndex);
+          break;
+        }
+      }
+
       // Todos excepto uno han hecho fold, o todos están all-in
       const activePlayers = getActivePlayers(players);
       if (activePlayers.length === 1) {
@@ -882,25 +935,65 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
     }))
   });
 
-  // Fallback: si todos actuaron, las apuestas están igualadas
-  // y volvimos al primer jugador de la fase, cerramos la ronda.
+  // Fallback: si todos actuaron y las apuestas están igualadas, la ronda termina
   if (!roundComplete) {
     const currentBetNum = parseInt(game.currentBet) || 0;
     // Solo considerar jugadores que pueden actuar (tienen chips)
     const playersWithChips = activePlayers.filter(p => p.chips > 0);
     
     const allMatched = playersWithChips.every(p => {
-      const committed = parseInt(p.committed) || 0;
-      return committed >= currentBetNum;
+      const betInPhase = parseInt(p.betInPhase) || 0;
+      return betInPhase >= currentBetNum;
     });
     const everyoneActed = playersWithChips.every(p => p.lastAction);
 
-    if (everyoneActed && allMatched && nextIndex === firstToAct) {
+    // Si todos con chips han actuado y los montos coinciden, la ronda está completa
+    // (sin importar si volvimos al firstToAct, porque los all-in pueden romper ese ciclo)
+    if (everyoneActed && allMatched) {
       roundComplete = true;
     }
   }
 
+  // Guardia adicional: aunque checkAllPlayersActed diga true,
+  // la ronda NO puede cerrarse si algún jugador con chips no ha igualado currentBet.
+  if (roundComplete) {
+    const currentBetNum = parseInt(game.currentBet) || 0;
+    const playersWithChips = activePlayers.filter(p => p.chips > 0);
+    const everyoneMatchedCurrentBet = playersWithChips.every(p => {
+      const betInPhase = parseInt(p.betInPhase) || 0;
+      return betInPhase >= currentBetNum;
+    });
+
+    if (!everyoneMatchedCurrentBet) {
+      roundComplete = false;
+      console.log('[DEBUG][ROUND_CHECK] Preventing premature roundComplete: players with chips not matched currentBet');
+    }
+  }
+
   if (activePlayers.length === 1) {
+    const soleRemaining = activePlayers[0];
+    const pendingOthers = players.filter(
+      p => (parseInt(p.chips) || 0) > 0 && p.lastAction == null && p.userId !== soleRemaining.userId
+    );
+
+    if (pendingOthers.length > 0) {
+      const nextPendingIndex = players.findIndex(p => p.userId === pendingOthers[0].userId);
+      if (nextPendingIndex !== -1) {
+        game.currentPlayerIndex = nextPendingIndex;
+        game.players = JSON.parse(JSON.stringify(players));
+        game.changed('players', true);
+        await game.save();
+
+        return {
+          success: true,
+          action,
+          amount: totalBet,
+          nextPlayer: players[nextPendingIndex],
+          gameState: await getGameState(game.id, false)
+        };
+      }
+    }
+
     const foldResult = await finishByFold(game);
     if (foldResult?.handContinues) {
       return {
@@ -935,19 +1028,67 @@ export const processPlayerAction = async (game, playerId, action, amount = 0) =>
 
     const activePlayers = players.filter(p => !p.folded);
     const playersWithChips = activePlayers.filter(p => p.chips > 0);
+    const allInPlayers = activePlayers.filter(p => p.chips === 0 && (p.betInPhase || p.committed) > 0);
+    const pendingPlayersWithChips = activePlayers.filter(p => p.chips > 0 && !p.lastAction);
 
     console.log('[DEBUG][ROUND_COMPLETE] Active players:', activePlayers.length);
     console.log('[DEBUG][ROUND_COMPLETE] Players with chips:', playersWithChips.length);
+    console.log('[DEBUG][ROUND_COMPLETE] All-in players:', allInPlayers.length);
+    console.log('[DEBUG][ROUND_COMPLETE] Pending players with chips:', pendingPlayersWithChips.length);
 
-    // Si solo queda 1 jugador con fichas y hay al menos 2 activos, saltar directo hasta showdown
-    if (playersWithChips.length <= 1 && activePlayers.length > 1) {
-      // IMPORTANTE: No hacer el showdown aquí dentro de processPlayerAction
-      // Solo retornar el estado actual con el pot actualizado.
-      // El cliente podrá consultar de nuevo o el showdown ocurrirá automáticamente en la siguiente consulta
-      return {
-        phaseAdvanced: true,
-        gameState: await getGameState(game.id, false)
+    // Si aún queda algún jugador con fichas por actuar, NO cerrar ronda todavía.
+    if (pendingPlayersWithChips.length > 0) {
+      const nextPendingIndex = players.findIndex(p => p.userId === pendingPlayersWithChips[0].userId);
+      if (nextPendingIndex !== -1) {
+        game.currentPlayerIndex = nextPendingIndex;
+        game.players = JSON.parse(JSON.stringify(players));
+        game.changed('players', true);
+        await game.save();
+
+        return {
+          success: true,
+          action,
+          amount: totalBet,
+          nextPlayer: players[nextPendingIndex],
+          gameState: await getGameState(game.id, false)
+        };
+      }
+    }
+
+    // Si hay jugadores all-in y la ronda terminó, correr board automáticamente
+    // hasta river y resolver showdown.
+    const hasAllInPlayers = allInPlayers.length > 0;
+    if (hasAllInPlayers && activePlayers.length > 1) {
+      const runoutByPhase = {
+        preflop: ['flop', 'turn', 'river'],
+        flop: ['turn', 'river'],
+        turn: ['river'],
+        river: []
       };
+
+      const phasesToDeal = runoutByPhase[game.phase] || [];
+      for (const phaseToDeal of phasesToDeal) {
+        dealCommunityForNextPhase(game, phaseToDeal);
+        game.phase = phaseToDeal;
+      }
+
+      game.currentBet = 0;
+      game.players = JSON.parse(JSON.stringify(players));
+      game.changed('players', true);
+      await game.save();
+
+      const showdownResult = await finishShowdown(game);
+      if (showdownResult?.handContinues) {
+        return {
+          success: true,
+          handOver: true,
+          winner: showdownResult.winner,
+          winners: showdownResult.winners || [],
+          potWon: showdownResult.potWon || 0,
+          gameState: await getGameState(game.id, false)
+        };
+      }
+      return { gameOver: true, winner: showdownResult?.winner || showdownResult };
     }
 
     // Flujo normal: avanzar solo una fase

@@ -267,13 +267,13 @@ function PokerTable({
                 {/* Info del jugador - DEBAJO de las cartas */}
                 <div className="player-info">
                   {/* Position Indicators */}
-                  {dealerPosition === index && (
+                  {dealerPosition === originalIndex && (
                     <div className="position-badge dealer-badge">D</div>
                   )}
-                  {smallBlindPosition === index && (
+                  {smallBlindPosition === originalIndex && (
                     <div className="position-badge sb-badge">SB</div>
                   )}
-                  {bigBlindPosition === index && (
+                  {bigBlindPosition === originalIndex && (
                     <div className="position-badge bb-badge">BB</div>
                   )}
                   

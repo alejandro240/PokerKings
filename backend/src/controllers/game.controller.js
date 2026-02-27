@@ -598,11 +598,19 @@ export const leaveGame = async (req, res) => {
     players[playerIndex].committed = 0;
     players[playerIndex].betInPhase = 0;
     players[playerIndex].lastAction = null;
+
+    await User.update(
+      { chips: Math.max(0, parseInt(players[playerIndex].chips) || 0) },
+      { where: { id: playerUserId } }
+    );
     
     // Si es el turno del jugador que se va, mover al siguiente
     if (game.currentPlayerIndex === playerIndex) {
       let nextIndex = (playerIndex + 1) % players.length;
-      while (players[nextIndex].isSittingOut && nextIndex !== playerIndex) {
+      while (
+        (players[nextIndex].isSittingOut || players[nextIndex].folded || (parseInt(players[nextIndex].chips) || 0) <= 0) &&
+        nextIndex !== playerIndex
+      ) {
         nextIndex = (nextIndex + 1) % players.length;
       }
       game.currentPlayerIndex = nextIndex;
@@ -617,13 +625,33 @@ export const leaveGame = async (req, res) => {
         game.status = 'waiting';
         game.phase = 'waiting';
         game.currentBet = 0;
+        game.pot = 0;
+        game.communityCards = [];
+        game.deck = [];
+        game.sidePots = [];
       }
+
+      if (activeSeats === 0) {
+        game.players = [];
+        game.currentPlayerIndex = 0;
+        game.dealerId = null;
+        game.smallBlindId = null;
+        game.bigBlindId = null;
+      }
+
       await game.save();
 
       await table.update({
         currentPlayers: Math.max(0, activeSeats),
         status: activeSeats >= 2 ? 'playing' : 'waiting'
       });
+
+      try {
+        const io = getIO();
+        io.to(`table_${table.id}`).emit('gameStateUpdated', await getGameState(gameId, false));
+      } catch (emitError) {
+        console.warn('⚠️ No se pudo emitir gameStateUpdated tras leaveGame:', emitError.message);
+      }
     }
 
     res.json({

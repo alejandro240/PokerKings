@@ -37,7 +37,7 @@ function TablePage({ table, user, onNavigate }) {
 
       const me = pokerGame.players.find(p => p.userId === user?.id);
       if (me) {
-        const shouldSpectate = !!me.isSittingOut || (parseInt(me.chips) || 0) <= 0;
+        const shouldSpectate = !!me.isSittingOut;
         setIsSpectator(shouldSpectate);
       }
     }

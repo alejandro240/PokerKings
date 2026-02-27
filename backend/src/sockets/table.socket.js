@@ -9,6 +9,8 @@ export const setupTableSocket = (io, socket) => {
       const table = await Table.findByPk(tableId);
       if (!table) return;
 
+      const userId = socket.data?.userId;
+
       const game = await Game.findOne({
         where: {
           tableId,
@@ -18,6 +20,23 @@ export const setupTableSocket = (io, socket) => {
       });
 
       if (game && Array.isArray(game.players)) {
+        if (userId) {
+          const nextPlayers = JSON.parse(JSON.stringify(game.players));
+          const idx = nextPlayers.findIndex(p => p.userId === userId);
+          if (idx !== -1 && !nextPlayers[idx].isSittingOut) {
+            nextPlayers[idx].isSittingOut = true;
+            nextPlayers[idx].folded = true;
+            nextPlayers[idx].hand = null;
+            nextPlayers[idx].holeCards = null;
+            nextPlayers[idx].committed = 0;
+            nextPlayers[idx].betInPhase = 0;
+            nextPlayers[idx].lastAction = null;
+            game.players = nextPlayers;
+            game.changed('players', true);
+            await game.save();
+          }
+        }
+
         const seated = game.players.filter(p => !p.isSittingOut).length;
         table.currentPlayers = Math.max(0, seated);
         table.status = seated >= 2 ? 'playing' : 'waiting';

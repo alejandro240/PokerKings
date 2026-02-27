@@ -382,6 +382,27 @@ const syncPlayersChipsToUsers = async (players) => {
   await Promise.all(updates);
 };
 
+const normalizeBustedPlayersToSittingOut = (players) => {
+  if (!Array.isArray(players)) return [];
+
+  return players.map((p) => {
+    const chips = Math.max(0, parseInt(p.chips) || 0);
+    if (chips > 0) return { ...p, chips };
+
+    return {
+      ...p,
+      chips: 0,
+      isSittingOut: true,
+      folded: true,
+      hand: null,
+      holeCards: null,
+      committed: 0,
+      betInPhase: 0,
+      lastAction: null
+    };
+  });
+};
+
 /**
  * Resolver ganador por fold (solo queda uno activo)
  */
@@ -411,8 +432,8 @@ const finishByFold = async (game) => {
   // Add the winnings to winner's chips
   winner.chips += winningsFromPots;
 
-  // Actualizar jugadores con el bote distribuido
-  game.players = JSON.parse(JSON.stringify(game.players));
+  // Actualizar jugadores con el bote distribuido y sacar de asiento a jugadores sin fichas
+  game.players = normalizeBustedPlayersToSittingOut(JSON.parse(JSON.stringify(game.players)));
   game.changed('players', true);
 
   await syncPlayersChipsToUsers(game.players);
@@ -609,8 +630,8 @@ const finishShowdown = async (game) => {
 
   console.log('[DEBUG][WINNERS] All winners:', winners.map(w => `${w.username} (${w.chipsWon} chips)`).join(', '));
 
-  // Actualizar jugadores con chips distribuidos
-  game.players = distributedPlayers;
+  // Actualizar jugadores con chips distribuidos y sacar de asiento a jugadores sin fichas
+  game.players = normalizeBustedPlayersToSittingOut(distributedPlayers);
   game.changed('players', true);
 
   await syncPlayersChipsToUsers(game.players);

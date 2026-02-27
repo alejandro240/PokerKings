@@ -131,6 +131,12 @@ class GameSocketService {
     });
   }
 
+  leaveTable(tableId) {
+    if (this.socket && tableId) {
+      this.socket.emit('table:leave', tableId);
+    }
+  }
+
   // Salir de una partida
   leaveGame(gameId, userId) {
     if (this.socket) {

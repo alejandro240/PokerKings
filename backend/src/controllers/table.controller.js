@@ -2,12 +2,38 @@ import { Table, User, Game } from '../models/index.js';
 import { getIO } from '../config/socket.js';
 import { emitLobbyTables } from '../sockets/lobby.socket.js';
 
+const syncTableFromLatestGame = async (table) => {
+  const latestGame = await Game.findOne({
+    where: {
+      tableId: table.id,
+      status: ['active', 'waiting']
+    },
+    order: [['updatedAt', 'DESC']]
+  });
+
+  let activeSeats = 0;
+  if (latestGame && Array.isArray(latestGame.players)) {
+    activeSeats = latestGame.players.filter(p => !p.isSittingOut).length;
+  }
+
+  const nextStatus = activeSeats >= 2 ? 'playing' : 'waiting';
+  if ((table.currentPlayers || 0) !== activeSeats || table.status !== nextStatus) {
+    table.currentPlayers = activeSeats;
+    table.status = nextStatus;
+    await table.save();
+  }
+
+  return table;
+};
+
 export const getTables = async (req, res) => {
   try {
     const tables = await Table.findAll({
       where: { status: ['waiting', 'playing'] }
     });
-    res.json(tables);
+
+    const syncedTables = await Promise.all(tables.map(syncTableFromLatestGame));
+    res.json(syncedTables);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -19,6 +45,8 @@ export const getTable = async (req, res) => {
     if (!table) {
       return res.status(404).json({ message: 'Table not found' });
     }
+
+    await syncTableFromLatestGame(table);
     res.json(table);
   } catch (error) {
     res.status(500).json({ message: error.message });

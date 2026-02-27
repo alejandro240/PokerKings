@@ -1,4 +1,6 @@
 import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import { config } from './env.js';
 import { setupLobbySocket } from '../sockets/lobby.socket.js';
 import { setupTableSocket } from '../sockets/table.socket.js';
 
@@ -15,6 +17,16 @@ export const setupSocket = (server) => {
   ioInstance = io;
 
   io.on('connection', (socket) => {
+    try {
+      const token = socket.handshake?.auth?.token;
+      if (token) {
+        const decoded = jwt.verify(token, config.jwtSecret);
+        socket.data.userId = decoded?.id || null;
+      }
+    } catch {
+      socket.data.userId = null;
+    }
+
     console.log('👤 User connected:', socket.id);
 
     setupLobbySocket(io, socket);

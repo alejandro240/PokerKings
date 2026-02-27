@@ -34,6 +34,12 @@ function TablePage({ table, user, onNavigate }) {
   useEffect(() => {
     if (pokerGame.players && pokerGame.players.length > 0) {
       setPlayers(pokerGame.players);
+
+      const me = pokerGame.players.find(p => p.userId === user?.id);
+      if (me) {
+        const shouldSpectate = !!me.isSittingOut || (parseInt(me.chips) || 0) <= 0;
+        setIsSpectator(shouldSpectate);
+      }
     }
   }, [pokerGame.players]);
 
@@ -114,7 +120,12 @@ function TablePage({ table, user, onNavigate }) {
       initializeGame();
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (table?.id) {
+        gameSocket.leaveTable(table.id);
+      }
+    };
   }, [table, user]);
 
   // Manejar levantarse (modo espectador)
@@ -122,6 +133,9 @@ function TablePage({ table, user, onNavigate }) {
     try {
       if (pokerGame.gameId) {
         await gameAPI.leaveGame(pokerGame.gameId, user?.id);
+      }
+      if (table?.id) {
+        gameSocket.leaveTable(table.id);
       }
       setIsSpectator(true);
       setShowMenu(false);
@@ -165,6 +179,9 @@ function TablePage({ table, user, onNavigate }) {
       try {
         if (pokerGame.gameId) {
           await gameAPI.leaveGame(pokerGame.gameId, user?.id);
+        }
+        if (table?.id) {
+          gameSocket.leaveTable(table.id);
         }
       } catch (leaveErr) {
         console.error('Error abandonando el juego:', leaveErr);

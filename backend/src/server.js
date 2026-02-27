@@ -11,20 +11,28 @@ const server = createServer(app);
 // Setup Socket.IO
 setupSocket(server);
 
-// Connect to database
-connectDB();
+// Arranque secuencial para evitar race conditions
+const startServer = async () => {
+  // 1. Conectar a DB primero
+  await connectDB();
 
-// Seed database (solo en desarrollo)
-if (config.nodeEnv === 'development') {
-  seedDatabase();
-}
+  // 2. Seed solo en desarrollo, después de que DB esté lista
+  if (config.nodeEnv === 'development') {
+    await seedDatabase();
+  }
 
-// Iniciar servicio de limpieza de mesas vacías
-startTableCleanupService();
+  // 3. Iniciar servicio de limpieza
+  startTableCleanupService();
 
-// Start server
-server.listen(config.port, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${config.port}`);
-  console.log(`📍 Entorno: ${config.nodeEnv}`);
-  console.log(`📊 Base de datos: PostgreSQL`);
+  // 4. Arrancar el servidor HTTP
+  server.listen(config.port, () => {
+    console.log(`🚀 Servidor corriendo en puerto ${config.port}`);
+    console.log(`📍 Entorno: ${config.nodeEnv}`);
+    console.log(`📊 Base de datos: PostgreSQL`);
+  });
+};
+
+startServer().catch((err) => {
+  console.error('❌ Error fatal al iniciar el servidor:', err);
+  process.exit(1);
 });

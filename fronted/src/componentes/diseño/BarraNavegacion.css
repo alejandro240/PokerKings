@@ -3,12 +3,17 @@
   background: linear-gradient(180deg, #0a0e27 0%, #1a1a2e 100%) !important;
   border-bottom: 3px solid #daa520;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-  padding: 0.15rem 1rem !important;
+  padding: 0.1rem 0.75rem !important;
 }
 
 .navbar-casino .container-fluid {
   padding-top: 0;
   padding-bottom: 0;
+}
+
+.navbar-casino .navbar-brand img {
+  height: 62px !important;
+  width: auto;
 }
 
 .navbar-casino .navbar-brand {
@@ -35,16 +40,30 @@
 /* En pantallas < lg: menú expandido en columna */
 @media (max-width: 991.98px) {
   .navbar-casino .navbar-collapse.show {
-    padding: 0.5rem 0;
+    padding: 0.4rem 0;
   }
+
+  .navbar-casino .container-fluid {
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+  }
+
   .navbar-casino .navbar-nav {
     flex-direction: column;
     align-items: flex-start;
+    width: 100%;
   }
+
+  .navbar-casino .nav-item {
+    width: 100%;
+  }
+
   .navbar-casino .nav-link {
-    padding: 8px 15px !important;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px !important;
     margin: 2px 0;
-    font-size: 0.9rem !important;
+    font-size: 0.88rem !important;
   }
 }
 
@@ -232,5 +251,26 @@
 
   .navbar-casino .navbar-brand img {
     height: 60px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .navbar-casino {
+    padding: 0.05rem 0.4rem !important;
+    border-bottom-width: 2px;
+  }
+
+  .navbar-casino .navbar-brand img {
+    height: 40px !important;
+  }
+
+  .navbar-casino .navbar-toggler {
+    padding: 0.18rem 0.38rem;
+    border-width: 1px;
+  }
+
+  .navbar-casino .nav-link {
+    font-size: 0.84rem !important;
+    padding: 7px 10px !important;
   }
 }

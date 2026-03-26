@@ -12,6 +12,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #0a0e27;
   color: #e0e0e0;
+  overflow-x: hidden;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 code {

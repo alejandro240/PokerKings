@@ -1,24 +1,24 @@
 .create-table-page {
-  min-height: calc(100vh - 80px);
+  min-height: calc(100dvh - 80px);
   background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 100%);
-  padding: 2rem;
+  padding: clamp(0.75rem, 3vw, 2rem);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .create-container {
-  max-width: 700px;
+  max-width: min(700px, 100%);
   width: 100%;
   background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
   border: 3px solid rgba(218, 165, 32, 0.3);
   border-radius: 20px;
-  padding: 2.5rem;
+  padding: clamp(1rem, 3.8vw, 2.5rem);
   box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
   animation: fadeIn 0.5s ease-out;
 }
 
-.btn-back {
+.create-table-page .btn-back {
   background: rgba(15, 52, 96, 0.5);
   border: 2px solid rgba(218, 165, 32, 0.3);
   color: #daa520;
@@ -30,7 +30,7 @@
   margin-bottom: 1.5rem;
 }
 
-.btn-back:hover {
+.create-table-page .btn-back:hover {
   background: rgba(15, 52, 96, 0.8);
   border-color: #daa520;
   transform: translateX(-3px);
@@ -38,7 +38,7 @@
 
 .create-title {
   color: #daa520;
-  font-size: 2.5rem;
+  font-size: clamp(1.8rem, 6vw, 2.5rem);
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   margin-bottom: 0.5rem;
@@ -76,6 +76,7 @@
   border-radius: 10px;
   font-size: 1rem;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .form-input:focus {
@@ -97,7 +98,7 @@
 
 .btn-option {
   flex: 1;
-  min-width: 120px;
+  min-width: 0;
   padding: 0.8rem 1rem;
   background: rgba(15, 52, 96, 0.3);
   border: 2px solid rgba(218, 165, 32, 0.3);
@@ -184,6 +185,7 @@
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .form-select:focus {
@@ -209,6 +211,8 @@
 .summary-item {
   display: flex;
   justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
   color: #e0e0e0;
   padding: 0.5rem 0;
   border-bottom: 1px solid rgba(218, 165, 32, 0.1);
@@ -220,6 +224,8 @@
 
 .summary-item strong {
   color: #daa520;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 /* Acciones del formulario */
@@ -229,7 +235,7 @@
   margin-top: 1rem;
 }
 
-.btn-cancel {
+.create-table-page .btn-cancel {
   flex: 1;
   padding: 1rem;
   background: rgba(196, 30, 58, 0.2);
@@ -242,12 +248,12 @@
   transition: all 0.3s ease;
 }
 
-.btn-cancel:hover {
+.create-table-page .btn-cancel:hover {
   background: rgba(196, 30, 58, 0.3);
   transform: translateY(-2px);
 }
 
-.btn-submit {
+.create-table-page .btn-submit {
   flex: 2;
   padding: 1rem;
   background: linear-gradient(135deg, #daa520 0%, #b8941e 100%);
@@ -260,7 +266,7 @@
   transition: all 0.3s ease;
 }
 
-.btn-submit:hover {
+.create-table-page .btn-submit:hover {
   background: linear-gradient(135deg, #ffd700 0%, #daa520 100%);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(218, 165, 32, 0.4);
@@ -279,12 +285,19 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .create-table-page {
+    min-height: calc(100dvh - 72px);
+    padding: 0.75rem;
+  }
+
   .create-container {
     padding: 1.5rem;
+    border-radius: 16px;
   }
 
   .create-title {
-    font-size: 2rem;
+    font-size: 1.9rem;
+    line-height: 1.15;
   }
 
   .form-row {
@@ -297,9 +310,15 @@
 
   .btn-option {
     min-width: 100%;
+    width: 100%;
   }
 
   .form-actions {
     flex-direction: column;
+  }
+
+  .create-table-page .btn-cancel,
+  .create-table-page .btn-submit {
+    width: 100%;
   }
 }

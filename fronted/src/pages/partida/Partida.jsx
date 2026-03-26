@@ -8,6 +8,21 @@ import { gameSocket } from '../../servicios/socketJuego';
 import './Partida.css';
 
 function TablePage({ table, user, onNavigate }) {
+  const detectMobileGameDevice = () => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1024px)').matches;
+  };
+
+  const detectLandscape = () => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(orientation: landscape)').matches;
+  };
+
+  const detectFullscreen = () => {
+    if (typeof document === 'undefined') return false;
+    return !!document.fullscreenElement;
+  };
+
   const [players, setPlayers] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [isSpectator, setIsSpectator] = useState(false);
@@ -21,12 +36,34 @@ function TablePage({ table, user, onNavigate }) {
   const [winnerPopupData, setWinnerPopupData] = useState(null);
   const [spectatorDelayUntil, setSpectatorDelayUntil] = useState(0);
   const [isCompact, setIsCompact] = useState(window.innerWidth < 900);
+  const [isMobileGameDevice, setIsMobileGameDevice] = useState(detectMobileGameDevice);
+  const [isLandscape, setIsLandscape] = useState(detectLandscape);
+  const [isFullscreenActive, setIsFullscreenActive] = useState(detectFullscreen);
 
   // Detectar tamaño de pantalla para colapsar botones
   useEffect(() => {
     const handleResize = () => setIsCompact(window.innerWidth < 900);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const syncGameModeState = () => {
+      setIsMobileGameDevice(detectMobileGameDevice());
+      setIsLandscape(detectLandscape());
+      setIsFullscreenActive(detectFullscreen());
+    };
+
+    window.addEventListener('resize', syncGameModeState);
+    window.addEventListener('orientationchange', syncGameModeState);
+    document.addEventListener('fullscreenchange', syncGameModeState);
+    syncGameModeState();
+
+    return () => {
+      window.removeEventListener('resize', syncGameModeState);
+      window.removeEventListener('orientationchange', syncGameModeState);
+      document.removeEventListener('fullscreenchange', syncGameModeState);
+    };
   }, []);
 
   // Usar el hook de juego de póker (conectado con backend)
@@ -316,6 +353,25 @@ function TablePage({ table, user, onNavigate }) {
     }
   };
 
+  const handleTryLandscape = async () => {
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+
+      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+        await screen.orientation.lock('landscape');
+      }
+
+      setIsLandscape(detectLandscape());
+      setIsFullscreenActive(detectFullscreen());
+    } catch (err) {
+      console.warn('No se pudo forzar landscape automáticamente:', err?.message || err);
+    }
+  };
+
+  const mustEnforceGameMode = isMobileGameDevice && (!isLandscape || !isFullscreenActive);
+
   if (!table) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#e0e0e0' }}>
@@ -353,6 +409,34 @@ function TablePage({ table, user, onNavigate }) {
         <button className="btn btn-primary" onClick={() => onNavigate('mesas')}>
           Volver al lobby
         </button>
+      </div>
+    );
+  }
+
+  if (mustEnforceGameMode) {
+    return (
+      <div className="orientation-lock-screen">
+        <div className="orientation-lock-card">
+          <div className="orientation-lock-icon">📱↻</div>
+          <h2>Modo juego obligatorio</h2>
+          <p>
+            Para jugar debes estar en pantalla completa y en horizontal.
+          </p>
+          <div className="orientation-lock-status">
+            <span className={`orientation-status-pill ${isLandscape ? 'ok' : 'ko'}`}>
+              Horizontal: {isLandscape ? 'OK' : 'Pendiente'}
+            </span>
+            <span className={`orientation-status-pill ${isFullscreenActive ? 'ok' : 'ko'}`}>
+              Pantalla completa: {isFullscreenActive ? 'OK' : 'Pendiente'}
+            </span>
+          </div>
+          <button className="orientation-lock-btn" onClick={handleTryLandscape}>
+            Activar modo juego
+          </button>
+          <button className="orientation-exit-btn" onClick={() => onNavigate('mesas')}>
+            Volver al lobby
+          </button>
+        </div>
       </div>
     );
   }
